@@ -9,4 +9,4 @@ plugins:
   - local: protoc-gen-protosource-ts
     out: frontend/src/gen
     opt:
-      - module=github.com/funinthecloud/protosource-showcase/backend/gen
+      - module=github.com/funinthecloud/todoapp/backend-bolt/gen

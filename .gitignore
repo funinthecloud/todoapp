@@ -7,6 +7,9 @@
 frontend/node_modules/
 frontend/dist/
 
+# BoltDB data
+backend-bolt/data/
+
 # IDE
 .idea/
 .vscode/

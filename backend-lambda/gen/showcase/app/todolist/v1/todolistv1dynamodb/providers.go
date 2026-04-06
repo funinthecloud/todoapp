@@ -4,7 +4,7 @@ package todolistv1dynamodb
 
 import (
 	"github.com/funinthecloud/protosource"
-	pkg "github.com/funinthecloud/protosource-showcase/backend/gen/showcase/app/todolist/v1"
+	pkg "github.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1"
 	"github.com/goforj/wire"
 )
 

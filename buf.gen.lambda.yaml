@@ -1,0 +1,16 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package
+      module: buf.build/funinthecloud/todoapp
+      value: github.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1;todolistv1
+plugins:
+  - local: protoc-gen-go
+    out: backend-lambda/gen
+    opt:
+      - module=github.com/funinthecloud/todoapp/backend-lambda/gen
+  - local: protoc-gen-protosource
+    out: backend-lambda/gen
+    opt:
+      - module=github.com/funinthecloud/todoapp/backend-lambda/gen

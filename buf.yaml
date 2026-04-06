@@ -1,7 +1,7 @@
 version: v2
 modules:
   - path: proto
-    name: buf.build/funinthecloud/protosource-showcase
+    name: buf.build/funinthecloud/todoapp
 deps:
   - buf.build/funinthecloud/protosource
   - buf.build/bufbuild/protovalidate

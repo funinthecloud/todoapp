@@ -1440,8 +1440,8 @@ const file_showcase_app_todolist_v1_todolist_v1_proto_rawDesc = "" +
 	"\x05State\x12\x15\n" +
 	"\x11STATE_UNSPECIFIED\x10\x00\x12\x10\n" +
 	"\fSTATE_ACTIVE\x10\x01\x12\x12\n" +
-	"\x0eSTATE_ARCHIVED\x10\x02B\x97\x02Ҭ\x1d\x02\b\x01\n" +
-	"\x1ccom.showcase.app.todolist.v1B\x0fTodolistV1ProtoP\x01Z]github.com/funinthecloud/protosource-showcase/backend/gen/showcase/app/todolist/v1;todolistv1\xa2\x02\x03SAT\xaa\x02\x18Showcase.App.Todolist.V1\xca\x02\x18Showcase\\App\\Todolist\\V1\xe2\x02$Showcase\\App\\Todolist\\V1\\GPBMetadata\xea\x02\x1bShowcase::App::Todolist::V1b\x06proto3"
+	"\x0eSTATE_ARCHIVED\x10\x02B\x91\x02Ҭ\x1d\x02\b\x01\n" +
+	"\x1ccom.showcase.app.todolist.v1B\x0fTodolistV1ProtoP\x01ZWgithub.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1;todolistv1\xa2\x02\x03SAT\xaa\x02\x18Showcase.App.Todolist.V1\xca\x02\x18Showcase\\App\\Todolist\\V1\xe2\x02$Showcase\\App\\Todolist\\V1\\GPBMetadata\xea\x02\x1bShowcase::App::Todolist::V1b\x06proto3"
 
 var (
 	file_showcase_app_todolist_v1_todolist_v1_proto_rawDescOnce sync.Once

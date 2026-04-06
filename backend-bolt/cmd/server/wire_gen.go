@@ -8,18 +8,21 @@ package main
 
 import (
 	"github.com/funinthecloud/protosource"
-	"github.com/funinthecloud/protosource-showcase/backend/gen/showcase/app/todolist/v1"
 	"github.com/funinthecloud/protosource/serializers/protobinaryserializer"
-	"github.com/funinthecloud/protosource/stores/memorystore"
+	"github.com/funinthecloud/protosource/stores/boltdbstore"
+	"github.com/funinthecloud/todoapp/backend-bolt/gen/showcase/app/todolist/v1"
 )
 
 // Injectors from wire.go:
 
-func InitializeRepository() *protosource.Repository {
-	memoryStore := provideStore()
+func InitializeRepository() (*protosource.Repository, error) {
+	boltDBStore, err := provideStore()
+	if err != nil {
+		return nil, err
+	}
 	serializer := protobinaryserializer.NewSerializer()
-	repository := provideRepository(memoryStore, serializer)
-	return repository
+	repository := provideRepository(boltDBStore, serializer)
+	return repository, nil
 }
 
 func InitializeHandler(repo *protosource.Repository) *todolistv1.Handler {
@@ -29,11 +32,11 @@ func InitializeHandler(repo *protosource.Repository) *todolistv1.Handler {
 
 // wire.go:
 
-func provideStore() *memorystore.MemoryStore {
-	return memorystore.New(todolistv1.SnapshotEveryNEvents)
+func provideStore() (*boltdbstore.BoltDBStore, error) {
+	return boltdbstore.New("data", "todolist")
 }
 
-func provideRepository(store *memorystore.MemoryStore, serializer *protobinaryserializer.Serializer) *protosource.Repository {
+func provideRepository(store *boltdbstore.BoltDBStore, serializer *protobinaryserializer.Serializer) *protosource.Repository {
 	return todolistv1.NewRepository(store, serializer)
 }
 

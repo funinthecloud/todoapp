@@ -10,7 +10,10 @@ import (
 )
 
 func main() {
-	repo := InitializeRepository()
+	repo, err := InitializeRepository()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	router := protosource.NewRouter()
 	handler := InitializeHandler(repo)

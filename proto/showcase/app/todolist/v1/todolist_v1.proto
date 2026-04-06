@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package showcase.app.todolist.v1;
 
-option go_package = "github.com/funinthecloud/protosource-showcase/backend/gen/showcase/app/todolist/v1;todolistv1";
+option go_package = "github.com/funinthecloud/todoapp/backend-bolt/gen/showcase/app/todolist/v1;todolistv1";
 
 import "funinthecloud/protosource/options/v1/options_v1.proto";
 import "buf/validate/validate.proto";
