@@ -1316,14 +1316,16 @@ var File_showcase_app_todolist_v1_todolist_v1_proto protoreflect.FileDescriptor
 
 const file_showcase_app_todolist_v1_todolist_v1_proto_rawDesc = "" +
 	"\n" +
-	"*showcase/app/todolist/v1/todolist_v1.proto\x12\x18showcase.app.todolist.v1\x1a5funinthecloud/protosource/options/v1/options_v1.proto\x1a\x1bbuf/validate/validate.proto\"\xe6\x03\n" +
+	"*showcase/app/todolist/v1/todolist_v1.proto\x12\x18showcase.app.todolist.v1\x1a5funinthecloud/protosource/options/v1/options_v1.proto\x1a\x1bbuf/validate/validate.proto\"\xfa\x03\n" +
 	"\bTodoList\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x03R\aversion\x125\n" +
 	"\x05state\x18\x03 \x01(\x0e2\x1f.showcase.app.todolist.v1.StateR\x05state\x12\x12\n" +
-	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1b\n" +
-	"\tcreate_at\x18\x05 \x01(\x03R\bcreateAt\x12\x1b\n" +
-	"\tcreate_by\x18\x06 \x01(\tR\bcreateBy\x12\x1b\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12%\n" +
+	"\tcreate_at\x18\x05 \x01(\x03B\b¬\x1d\x04\n" +
+	"\x02\b\x04R\bcreateAt\x12%\n" +
+	"\tcreate_by\x18\x06 \x01(\tB\b¬\x1d\x04\n" +
+	"\x02\b\x03R\bcreateBy\x12\x1b\n" +
 	"\tmodify_at\x18\a \x01(\x03R\bmodifyAt\x12\x1b\n" +
 	"\tmodify_by\x18\b \x01(\tR\bmodifyBy\x12\x1d\n" +
 	"\n" +

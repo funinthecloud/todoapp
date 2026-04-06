@@ -40,8 +40,14 @@ func main() {
 	lambda.Start(handler)
 }
 
-func extractActor(_ events.APIGatewayProxyRequest) string {
-	return "lambda"
+func extractActor(req events.APIGatewayProxyRequest) string {
+	if actor := req.Headers["x-actor"]; actor != "" {
+		return actor
+	}
+	if actor := req.Headers["X-Actor"]; actor != "" {
+		return actor
+	}
+	return "anonymous"
 }
 
 func envOrDefault(key, fallback string) string {

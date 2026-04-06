@@ -65,6 +65,16 @@ header .subtitle {
   min-width: 0;
 }
 
+.show-archived {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+}
+
 .list-selector {
   list-style: none;
 }
@@ -92,6 +102,10 @@ header .subtitle {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.list-selector li.archived-entry {
+  opacity: 0.5;
 }
 
 /* Content */

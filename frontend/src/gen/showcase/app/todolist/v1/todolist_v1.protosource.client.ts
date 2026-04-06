@@ -54,4 +54,36 @@ export class TodoListHTTPClient {
     return this.client.history(routePath, id);
   }
 
+  async queryByCreateBy(createBy: string): Promise<TodoList[]> {
+    const params: Record<string, string> = {
+      "create_by": createBy,
+    };
+    const list = await this.client.query(routePath, "by-create-by", params, TodoListListSchema);
+    return list.items;
+  }
+
+  async queryByCreateByWithCreateAt(createBy: string, skOp: string, createAt: bigint): Promise<TodoList[]> {
+    if (skOp === "between") {
+      throw new Error("use queryByCreateByBetweenCreateAt for between queries");
+    }
+    const params: Record<string, string> = {
+      "create_by": createBy,
+      "sk_op": skOp,
+      "create_at": String(createAt),
+    };
+    const list = await this.client.query(routePath, "by-create-by", params, TodoListListSchema);
+    return list.items;
+  }
+
+  async queryByCreateByBetweenCreateAt(createBy: string, createAtFrom: bigint, createAtTo: bigint): Promise<TodoList[]> {
+    const params: Record<string, string> = {
+      "create_by": createBy,
+      "sk_op": "between",
+      "create_at": String(createAtFrom),
+      "create_at2": String(createAtTo),
+    };
+    const list = await this.client.query(routePath, "by-create-by", params, TodoListListSchema);
+    return list.items;
+  }
+
 }
