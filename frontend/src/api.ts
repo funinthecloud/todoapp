@@ -20,7 +20,9 @@ class HeaderAuth implements AuthProvider {
   }
 }
 
-const client = new ProtosourceClient(baseURL, new HeaderAuth("demo-user"), {
+export const actorName = "demo-user";
+
+const client = new ProtosourceClient(baseURL, new HeaderAuth(actorName), {
   useJSON: true,
 });
 

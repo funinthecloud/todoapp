@@ -57,6 +57,8 @@ func (h *Handler) RegisterRoutes(router *protosource.Router) {
 	router.Handle("GET", "showcase/app/todolist/v1/{id}", h.HandleGet)
 	router.Handle("GET", "showcase/app/todolist/v1/{id}/history", h.HandleHistory)
 
+	router.Handle("GET", "showcase/app/todolist/v1/query/by-create-by", h.HandleQueryByCreateBy)
+
 }
 
 // HandleCreate processes a Create command.
@@ -357,6 +359,68 @@ func (h *Handler) HandleHistory(ctx context.Context, request protosource.Request
 	}
 }
 
+// HandleQueryByCreateBy queries GSI1 by partition key with optional sort key condition.
+func (h *Handler) HandleQueryByCreateBy(ctx context.Context, request protosource.Request) protosource.Response {
+	create_by := request.QueryParameters["create_by"]
+	if create_by == "" {
+		return errorResponse(http.StatusBadRequest, "QUERY_MISSING_PK", "missing required parameter: create_by", nil)
+	}
+
+	skOp := request.QueryParameters["sk_op"]
+
+	if skOp == "" {
+		results, err := h.client.SelectTodoListByCreateBy(ctx, create_by)
+		if err != nil {
+			return errorResponse(http.StatusInternalServerError, "QUERY_EXEC", "query failed", err)
+		}
+		return queryResponse(request, results)
+	}
+
+	op, ok := parseSortOperator(skOp)
+	if !ok {
+		return errorResponse(http.StatusBadRequest, "QUERY_BAD_OP", fmt.Sprintf("invalid sort operator: %s", skOp), nil)
+	}
+
+	create_atRaw := request.QueryParameters["create_at"]
+	if create_atRaw == "" {
+		return errorResponse(http.StatusBadRequest, "QUERY_MISSING_SK", "missing required parameter: create_at", nil)
+	}
+	create_atVal, create_atErr := parseQueryParamInt64(create_atRaw)
+	if create_atErr != nil {
+		return errorResponse(http.StatusBadRequest, "QUERY_BAD_PARAM", fmt.Sprintf("invalid value for create_at: %v", create_atErr), nil)
+	}
+
+	skVal := TodoListGSI1SK{
+		CreateAt: create_atVal,
+	}
+
+	if op == opaquedata.Between {
+		create_atRaw2 := request.QueryParameters["create_at2"]
+		if create_atRaw2 == "" {
+			return errorResponse(http.StatusBadRequest, "QUERY_MISSING_SK", "missing required parameter: create_at2 (required for between)", nil)
+		}
+		create_atVal2, create_atErr2 := parseQueryParamInt64(create_atRaw2)
+		if create_atErr2 != nil {
+			return errorResponse(http.StatusBadRequest, "QUERY_BAD_PARAM", fmt.Sprintf("invalid value for create_at2: %v", create_atErr2), nil)
+		}
+		skVal2 := TodoListGSI1SK{
+			CreateAt: create_atVal2,
+		}
+		results, err := h.client.SelectTodoListByCreateByWithCreateAt(ctx, create_by, op, skVal, skVal2)
+		if err != nil {
+			return errorResponse(http.StatusInternalServerError, "QUERY_EXEC", "query failed", err)
+		}
+		return queryResponse(request, results)
+	}
+
+	results, err := h.client.SelectTodoListByCreateByWithCreateAt(ctx, create_by, op, skVal)
+	if err != nil {
+		return errorResponse(http.StatusInternalServerError, "QUERY_EXEC", "query failed", err)
+	}
+	return queryResponse(request, results)
+
+}
+
 // ── Helpers ──
 
 // acceptsProtobuf checks the Accept header: protobuf wins if present,
@@ -550,4 +614,12 @@ func parseQueryParamFloat64(s string) (float64, error) {
 		return 0, fmt.Errorf("invalid float64: %w", err)
 	}
 	return v, nil
+}
+
+func parseQueryParamEnum[T ~int32](s string) (T, error) {
+	v, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid enum value: %w", err)
+	}
+	return T(v), nil
 }

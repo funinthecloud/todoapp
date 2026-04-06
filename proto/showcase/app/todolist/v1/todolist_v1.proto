@@ -26,8 +26,12 @@ message TodoList {
   int64                 version         = 2;
   State                 state           = 3;
   string                name            = 4;
-  int64                 create_at       = 5;
-  string                create_by       = 6;
+  int64                 create_at       = 5 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = {
+    attributes: [ { type: OPAQUE_KEY_TYPE_GSI1SK } ]
+  }];
+  string                create_by       = 6 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = {
+    attributes: [ { type: OPAQUE_KEY_TYPE_GSI1PK } ]
+  }];
   int64                 modify_at       = 7;
   string                modify_by       = 8;
   int32                 item_count      = 9;

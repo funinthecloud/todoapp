@@ -167,8 +167,22 @@ func (m *TodoList) PK() string {
 
 func (m *TodoList) SK() string { return "AGG" }
 
-func (m *TodoList) GSI1PK() string  { return "NA" }
-func (m *TodoList) GSI1SK() string  { return "NA" }
+func (m *TodoList) GSI1PK() string {
+	if m == nil {
+		return ""
+	}
+	var fields string
+	fields += fmt.Sprintf("#create_by#%v", m.GetCreateBy())
+	return fmt.Sprintf("showcase_app_todolist_v1#todolist%s", fields)
+}
+func (m *TodoList) GSI1SK() string {
+	if m == nil {
+		return ""
+	}
+	var fields string
+	fields += fmt.Sprintf("#create_at#%v", m.GetCreateAt())
+	return fmt.Sprintf("showcase_app_todolist_v1#todolist%s", fields)
+}
 func (m *TodoList) GSI2PK() string  { return "NA" }
 func (m *TodoList) GSI2SK() string  { return "NA" }
 func (m *TodoList) GSI3PK() string  { return "NA" }
@@ -216,6 +230,16 @@ func (m *TodoList) Hydrate(body []byte) error {
 
 // ── Typed GSI SK value structs for TodoList ──
 
+type TodoListGSI1SK struct {
+	CreateAt int64
+}
+
+func (v TodoListGSI1SK) String() string {
+	var fields string
+	fields += fmt.Sprintf("#create_at#%v", v.CreateAt)
+	return fmt.Sprintf("showcase_app_todolist_v1#todolist%s", fields)
+}
+
 // ── Client for TodoList ──
 
 type TodoListClient struct {
@@ -258,6 +282,46 @@ func (c *TodoListClient) DeleteTodoList(ctx context.Context, id string) error {
 		Id: id,
 	}
 	return c.store.Delete(ctx, key.PK(), key.SK())
+}
+
+// SelectTodoListByCreateBy queries GSI1 by partition key.
+func (c *TodoListClient) SelectTodoListByCreateBy(ctx context.Context, create_by string) ([]*TodoList, error) {
+	pk := &TodoList{
+		CreateBy: create_by,
+	}
+	pkValue := pk.GSI1PK()
+	results, err := c.store.Query(ctx, "gsi1pk", pkValue, "gsi1sk", nil, opaquedata.WithGSIIndex(1))
+	if err != nil {
+		return nil, fmt.Errorf("TodoListClient.SelectTodoListByCreateBy: %w", err)
+	}
+	return rehydrateTodoList(results)
+}
+
+// SelectTodoListByCreateByWithCreateAt queries GSI1 with a sort key condition.
+func (c *TodoListClient) SelectTodoListByCreateByWithCreateAt(ctx context.Context, create_by string, op opaquedata.SortOperator, vals ...TodoListGSI1SK) ([]*TodoList, error) {
+	if op == opaquedata.Between {
+		if len(vals) != 2 {
+			return nil, fmt.Errorf("TodoListClient.SelectTodoListByCreateByWithCreateAt: Between requires exactly 2 values, got %d", len(vals))
+		}
+	} else if len(vals) != 1 {
+		return nil, fmt.Errorf("TodoListClient.SelectTodoListByCreateByWithCreateAt: operator %d requires exactly 1 value, got %d", op, len(vals))
+	}
+	pk := &TodoList{
+		CreateBy: create_by,
+	}
+	pkValue := pk.GSI1PK()
+	sort := &opaquedata.SortCondition{
+		Operator: op,
+		Value:    vals[0].String(),
+	}
+	if op == opaquedata.Between {
+		sort.Value2 = vals[1].String()
+	}
+	results, err := c.store.Query(ctx, "gsi1pk", pkValue, "gsi1sk", sort, opaquedata.WithGSIIndex(1))
+	if err != nil {
+		return nil, fmt.Errorf("TodoListClient.SelectTodoListByCreateByWithCreateAt: %w", err)
+	}
+	return rehydrateTodoList(results)
 }
 
 func rehydrateTodoList(results []*opaquedatav1.OpaqueData) ([]*TodoList, error) {

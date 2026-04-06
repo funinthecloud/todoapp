@@ -1,15 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { todoListClient } from "./api";
+import { todoListClient, actorName } from "./api";
 import type { TodoList, TodoItem } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
 import type { History } from "@protosource/client";
 import { create as createProto } from "@bufbuild/protobuf";
 import { TodoItemSchema } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
 import "./App.css";
-
-interface ListEntry {
-  id: string;
-  name: string;
-}
 
 function generateId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -22,10 +17,8 @@ function generateId(): string {
 }
 
 export default function App() {
-  const [lists, setLists] = useState<ListEntry[]>(() => {
-    const saved = localStorage.getItem("todoapp-lists");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [allLists, setAllLists] = useState<TodoList[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [list, setList] = useState<TodoList | null>(null);
   const [history, setHistory] = useState<History | null>(null);
@@ -35,18 +28,30 @@ export default function App() {
   const [renamingTo, setRenamingTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const loadMyLists = useCallback(async () => {
+    try {
+      const results = await todoListClient.queryByCreateBy(actorName);
+      setAllLists(results);
+      setError(null);
+    } catch (e: unknown) {
+      setError(`Failed to load lists: ${e instanceof Error ? e.message : e}`);
+    }
+  }, []);
+
   useEffect(() => {
-    localStorage.setItem("todoapp-lists", JSON.stringify(lists));
-  }, [lists]);
+    loadMyLists();
+  }, [loadMyLists]);
+
+  const visibleLists = showArchived
+    ? allLists
+    : allLists.filter((l) => l.state !== 2);
 
   const loadList = useCallback(async (id: string) => {
     try {
       const loaded = await todoListClient.load(id);
       setList(loaded);
-      setLists((prev) =>
-        prev.map((entry) =>
-          entry.id === id ? { ...entry, name: loaded.name } : entry
-        )
+      setAllLists((prev) =>
+        prev.map((entry) => (entry.id === id ? loaded : entry))
       );
       setError(null);
     } catch (e: unknown) {
@@ -77,9 +82,9 @@ export default function App() {
     const name = newListName.trim();
     try {
       await todoListClient.create(id, name);
-      setLists((prev) => [...prev, { id, name }]);
-      setSelectedId(id);
       setNewListName("");
+      setSelectedId(id);
+      await loadMyLists();
       await loadList(id);
       setError(null);
     } catch (err: unknown) {
@@ -103,6 +108,7 @@ export default function App() {
     try {
       await todoListClient.archive(selectedId);
       await loadList(selectedId);
+      await loadMyLists();
     } catch (err: unknown) {
       setError(`Archive failed: ${err instanceof Error ? err.message : err}`);
     }
@@ -113,6 +119,7 @@ export default function App() {
     try {
       await todoListClient.unarchive(selectedId);
       await loadList(selectedId);
+      await loadMyLists();
     } catch (err: unknown) {
       setError(`Unarchive failed: ${err instanceof Error ? err.message : err}`);
     }
@@ -164,15 +171,6 @@ export default function App() {
     }
   }
 
-  function handleDeleteListLocal(id: string) {
-    setLists((prev) => prev.filter((entry) => entry.id !== id));
-    if (selectedId === id) {
-      setSelectedId(null);
-      setList(null);
-      setHistory(null);
-    }
-  }
-
   const items = list ? Object.values(list.items) : [];
   const isArchived = list?.state === 2; // STATE_ARCHIVED
 
@@ -201,29 +199,31 @@ export default function App() {
             <button type="submit">Create</button>
           </form>
 
+          <label className="show-archived">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+            />
+            Show archived
+          </label>
+
           <ul className="list-selector">
-            {lists.map((entry) => (
+            {visibleLists.map((entry) => (
               <li
                 key={entry.id}
-                className={entry.id === selectedId ? "selected" : ""}
+                className={`${entry.id === selectedId ? "selected" : ""} ${entry.state === 2 ? "archived-entry" : ""}`}
                 onClick={() => {
                   setSelectedId(entry.id);
                   setShowHistory(false);
                 }}
               >
                 <span className="list-name">{entry.name}</span>
-                <button
-                  className="btn-remove"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteListLocal(entry.id);
-                  }}
-                  title="Remove from sidebar"
-                >
-                  x
-                </button>
               </li>
             ))}
+            {visibleLists.length === 0 && (
+              <li className="empty-items">No lists yet.</li>
+            )}
           </ul>
         </aside>
 
