@@ -6,6 +6,7 @@ plugins:
     out: frontend/src/gen
     opt:
       - target=ts
+    include_imports: true
   - local: protoc-gen-protosource-ts
     out: frontend/src/gen
     opt:
