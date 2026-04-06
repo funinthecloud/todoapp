@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: TodoApp backend - event-sourced todo list on Lambda
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+
+Parameters:
+  EventsTableName:
+    Type: String
+    Default: events
+  AggregatesTableName:
+    Type: String
+    Default: aggregates
+  DomainName:
+    Type: String
+    Description: Custom domain name (e.g. api.example.com)
+  CertificateArn:
+    Type: String
+    Description: ACM certificate ARN for the custom domain (must be in us-east-1 for edge, or same region for regional)
+  HostedZoneId:
+    Type: String
+    Description: Route 53 hosted zone ID for the domain
+
+Resources:
+  TodoFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      CodeUri: ./cmd/server/
+      Environment:
+        Variables:
+          EVENTS_TABLE: !Ref EventsTableName
+          AGGREGATES_TABLE: !Ref AggregatesTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventsTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AggregatesTableName
+      Events:
+        ApiCatchAll:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+  ApiDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      RegionalCertificateArn: !Ref CertificateArn
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName: !Ref ApiDomainName
+      RestApiId: !Ref ServerlessRestApi
+      Stage: Prod
+
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt ApiDomainName.RegionalDomainName
+        HostedZoneId: !GetAtt ApiDomainName.RegionalHostedZoneId
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  CustomDomainUrl:
+    Description: Custom domain URL
+    Value: !Sub "https://${DomainName}/"
+  TodoFunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt TodoFunction.Arn
