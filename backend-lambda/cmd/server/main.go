@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 
+	"github.com/funinthecloud/protosource"
 	"github.com/funinthecloud/protosource/adapters/awslambda"
 	"github.com/funinthecloud/protosource/stores/dynamodbstore"
 )
@@ -28,6 +29,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	router.SetCORS(protosource.CORSConfig{
+		AllowOrigin:  "*",
+		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders: "Content-Type,X-Actor",
+	})
 
 	handler := awslambda.WrapRouter(router, extractActor)
 	lambda.Start(handler)

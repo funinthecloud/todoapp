@@ -6,6 +6,11 @@ Globals:
   Function:
     Timeout: 10
     MemorySize: 128
+  Api:
+    Cors:
+      AllowOrigin: "'*'"
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Actor'"
 
 Parameters:
   EventsTableName:
@@ -62,6 +67,7 @@ Resources:
 
   ApiBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: ServerlessRestApiProdStage
     Properties:
       DomainName: !Ref ApiDomainName
       RestApiId: !Ref ServerlessRestApi
