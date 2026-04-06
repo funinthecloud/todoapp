@@ -1,0 +1,14 @@
+version: v2
+managed:
+  enabled: true
+  disable:
+    - file_option: go_package
+plugins:
+  - local: protoc-gen-go
+    out: backend/gen
+    opt:
+      - module=github.com/funinthecloud/protosource-showcase/backend/gen
+  - local: protoc-gen-protosource
+    out: backend/gen
+    opt:
+      - module=github.com/funinthecloud/protosource-showcase/backend/gen

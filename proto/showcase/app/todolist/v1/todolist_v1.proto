@@ -1,0 +1,228 @@
+syntax = "proto3";
+
+package showcase.app.todolist.v1;
+
+option go_package = "github.com/funinthecloud/protosource-showcase/backend/gen/showcase/app/todolist/v1;todolistv1";
+
+import "funinthecloud/protosource/options/v1/options_v1.proto";
+import "buf/validate/validate.proto";
+
+option (funinthecloud.protosource.options.v1.protosource_file).enabled = true;
+
+// ── Aggregate ──
+
+enum State {
+  STATE_UNSPECIFIED = 0;
+  STATE_ACTIVE      = 1;
+  STATE_ARCHIVED    = 2;
+}
+
+message TodoList {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .aggregate = {
+  };
+
+  string                id              = 1;
+  int64                 version         = 2;
+  State                 state           = 3;
+  string                name            = 4;
+  int64                 create_at       = 5;
+  string                create_by       = 6;
+  int64                 modify_at       = 7;
+  string                modify_by       = 8;
+  int32                 item_count      = 9;
+  int32                 completed_count = 10;
+  map<string, TodoItem> items           = 11;
+}
+
+message TodoListList {
+  repeated TodoList items = 1;
+}
+
+message TodoItem {
+  string item_id    = 1;
+  string title      = 2;
+  bool   completed  = 3;
+  int32  position   = 4;
+  int64  created_at = 5;
+}
+
+// ── Commands ──
+
+message Create {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .command = {
+    produces_events: [ "Created" ]
+    lifecycle: COMMAND_LIFECYCLE_CREATION
+  };
+  string id    = 1;
+  string actor = 2;
+  string name  = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+message Rename {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .command = {
+    produces_events: [ "Renamed" ]
+    lifecycle: COMMAND_LIFECYCLE_MUTATION
+    allowed_states: [ "STATE_ACTIVE" ]
+  };
+  string id    = 1;
+  string actor = 2;
+  string name  = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+message Archive {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .command = {
+    produces_events: [ "Archived" ]
+    lifecycle: COMMAND_LIFECYCLE_MUTATION
+    allowed_states: [ "STATE_ACTIVE" ]
+  };
+  string id    = 1;
+  string actor = 2;
+}
+
+message Unarchive {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .command = {
+    produces_events: [ "Unarchived" ]
+    lifecycle: COMMAND_LIFECYCLE_MUTATION
+    allowed_states: [ "STATE_ARCHIVED" ]
+  };
+  string id    = 1;
+  string actor = 2;
+}
+
+message AddItem {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .command = {
+    produces_events: [ "ItemAdded" ]
+    lifecycle: COMMAND_LIFECYCLE_MUTATION
+    allowed_states: [ "STATE_ACTIVE" ]
+  };
+  string   id    = 1;
+  string   actor = 2;
+  TodoItem item  = 3;
+}
+
+message UpdateItem {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .command = {
+    produces_events: [ "ItemUpdated" ]
+    lifecycle: COMMAND_LIFECYCLE_MUTATION
+    allowed_states: [ "STATE_ACTIVE" ]
+  };
+  string   id    = 1;
+  string   actor = 2;
+  TodoItem item  = 3;
+}
+
+message RemoveItem {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .command = {
+    produces_events: [ "ItemRemoved" ]
+    lifecycle: COMMAND_LIFECYCLE_MUTATION
+    allowed_states: [ "STATE_ACTIVE" ]
+  };
+  string id      = 1;
+  string actor   = 2;
+  string item_id = 3;
+}
+
+// ── Events ──
+
+message Created {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .event = {
+    sets_state: "STATE_ACTIVE"
+  };
+  string id      = 1;
+  int64  version = 2;
+  int64  at      = 3;
+  string actor   = 4;
+  string name    = 5;
+}
+
+message Renamed {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .event = {
+  };
+  string id      = 1;
+  int64  version = 2;
+  int64  at      = 3;
+  string actor   = 4;
+  string name    = 5;
+}
+
+message Archived {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .event = {
+    sets_state: "STATE_ARCHIVED"
+  };
+  string id      = 1;
+  int64  version = 2;
+  int64  at      = 3;
+  string actor   = 4;
+}
+
+message Unarchived {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .event = {
+    sets_state: "STATE_ACTIVE"
+  };
+  string id      = 1;
+  int64  version = 2;
+  int64  at      = 3;
+  string actor   = 4;
+}
+
+message ItemAdded {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .event = {
+    collection: { target: "items", action: COLLECTION_ACTION_ADD, key_field: "item_id" }
+  };
+  string   id      = 1;
+  int64    version = 2;
+  int64    at      = 3;
+  string   actor   = 4;
+  TodoItem item    = 5;
+}
+
+message ItemUpdated {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .event = {
+    collection: { target: "items", action: COLLECTION_ACTION_ADD, key_field: "item_id" }
+  };
+  string   id      = 1;
+  int64    version = 2;
+  int64    at      = 3;
+  string   actor   = 4;
+  TodoItem item    = 5;
+}
+
+message ItemRemoved {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .event = {
+    collection: { target: "items", action: COLLECTION_ACTION_REMOVE, key_field: "item_id" }
+  };
+  string id      = 1;
+  int64  version = 2;
+  int64  at      = 3;
+  string actor   = 4;
+  string item_id = 5;
+}
+
+// ── Snapshot ──
+
+message Snapshot {
+  option (funinthecloud.protosource.options.v1.protosource_message_type)
+      .snapshot = {
+    every_n_events: 50
+  };
+  string   id       = 1;
+  int64    version  = 2;
+  int64    at       = 3;
+  string   actor    = 4;
+  TodoList snapshot = 5;
+}
