@@ -41,8 +41,8 @@ export default function App() {
       }
       setAllLists(results);
       setError(null);
-    } catch (e: unknown) {
-      setError(`Failed to load lists: ${e instanceof Error ? e.message : e}`);
+    } catch {
+      setAllLists([]);
     }
   }, [showArchived]);
 
