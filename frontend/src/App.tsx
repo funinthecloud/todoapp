@@ -6,13 +6,18 @@ import { create as createProto } from "@bufbuild/protobuf";
 import { TodoItemSchema } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
 import "./App.css";
 
+interface ListEntry {
+  id: string;
+  name: string;
+}
+
 function generateId(): string {
   return crypto.randomUUID();
 }
 
 export default function App() {
-  const [listIds, setListIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem("todoapp-list-ids");
+  const [lists, setLists] = useState<ListEntry[]>(() => {
+    const saved = localStorage.getItem("todoapp-lists");
     return saved ? JSON.parse(saved) : [];
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -25,13 +30,18 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem("todoapp-list-ids", JSON.stringify(listIds));
-  }, [listIds]);
+    localStorage.setItem("todoapp-lists", JSON.stringify(lists));
+  }, [lists]);
 
   const loadList = useCallback(async (id: string) => {
     try {
       const loaded = await todoListClient.load(id);
       setList(loaded);
+      setLists((prev) =>
+        prev.map((entry) =>
+          entry.id === id ? { ...entry, name: loaded.name } : entry
+        )
+      );
       setError(null);
     } catch (e: unknown) {
       setError(`Failed to load list: ${e instanceof Error ? e.message : e}`);
@@ -58,9 +68,10 @@ export default function App() {
     e.preventDefault();
     if (!newListName.trim()) return;
     const id = generateId();
+    const name = newListName.trim();
     try {
-      await todoListClient.create(id, newListName.trim());
-      setListIds((prev) => [...prev, id]);
+      await todoListClient.create(id, name);
+      setLists((prev) => [...prev, { id, name }]);
       setSelectedId(id);
       setNewListName("");
       await loadList(id);
@@ -148,7 +159,7 @@ export default function App() {
   }
 
   function handleDeleteListLocal(id: string) {
-    setListIds((prev) => prev.filter((i) => i !== id));
+    setLists((prev) => prev.filter((entry) => entry.id !== id));
     if (selectedId === id) {
       setSelectedId(null);
       setList(null);
@@ -185,21 +196,21 @@ export default function App() {
           </form>
 
           <ul className="list-selector">
-            {listIds.map((id) => (
+            {lists.map((entry) => (
               <li
-                key={id}
-                className={id === selectedId ? "selected" : ""}
+                key={entry.id}
+                className={entry.id === selectedId ? "selected" : ""}
                 onClick={() => {
-                  setSelectedId(id);
+                  setSelectedId(entry.id);
                   setShowHistory(false);
                 }}
               >
-                <span className="list-id">{id.slice(0, 8)}...</span>
+                <span className="list-name">{entry.name}</span>
                 <button
                   className="btn-remove"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteListLocal(id);
+                    handleDeleteListLocal(entry.id);
                   }}
                   title="Remove from sidebar"
                 >

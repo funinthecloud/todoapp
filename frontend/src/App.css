@@ -77,7 +77,6 @@ header .subtitle {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.85rem;
-  font-family: monospace;
 }
 
 .list-selector li:hover {
@@ -89,7 +88,7 @@ header .subtitle {
   font-weight: 600;
 }
 
-.list-id {
+.list-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
