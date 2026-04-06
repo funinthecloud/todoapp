@@ -19,22 +19,13 @@ func main() {
 	handler := InitializeHandler(repo)
 	handler.RegisterRoutes(router)
 
-	wrapped := corsMiddleware(httpstandard.WrapRouter(router, httpstandard.HeaderExtractor("X-Actor")))
+	router.SetCORS(protosource.CORSConfig{
+		AllowOrigin:  "*",
+		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders: "Content-Type,X-Actor",
+	})
 
 	addr := ":8080"
 	fmt.Printf("Showcase server listening on %s\n", addr)
-	log.Fatal(http.ListenAndServe(addr, wrapped))
-}
-
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Actor")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+	log.Fatal(http.ListenAndServe(addr, httpstandard.WrapRouter(router, httpstandard.HeaderExtractor("X-Actor"))))
 }
