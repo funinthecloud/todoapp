@@ -7,7 +7,7 @@ import (
 	todolistv1 "github.com/funinthecloud/todoapp/backend-bolt/gen/showcase/app/todolist/v1"
 	"github.com/funinthecloud/protosource/serializers/protobinaryserializer"
 	"github.com/funinthecloud/protosource/stores/boltdbstore"
-	"github.com/google/wire"
+	"github.com/goforj/wire"
 )
 
 func provideStore() (*boltdbstore.BoltDBStore, error) {

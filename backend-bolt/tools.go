@@ -3,5 +3,5 @@
 package backend
 
 import (
-	_ "github.com/google/wire/cmd/wire"
+	_ "github.com/goforj/wire/cmd/wire"
 )

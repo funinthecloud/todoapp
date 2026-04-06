@@ -1,3 +1,3 @@
 package backend
 
-//go:generate go install github.com/google/wire/cmd/wire
+//go:generate go install github.com/goforj/wire/cmd/wire

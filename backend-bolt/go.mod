@@ -7,13 +7,13 @@ require (
 	buf.build/go/protovalidate v1.1.3
 	github.com/funinthecloud/protosource v0.0.5
 	github.com/goforj/wire v1.1.0
-	github.com/google/wire v0.7.0
 	google.golang.org/protobuf v1.36.11
 )
 
 require (
 	cel.dev/expr v0.25.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/google/cel-go v0.27.0 // indirect
 	github.com/google/subcommands v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
