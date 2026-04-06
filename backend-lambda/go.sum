@@ -56,6 +56,8 @@ github.com/funinthecloud/protosource v0.0.6 h1:lBxLD3DmZLofUrcJsbAxPJKc3R5F0Eq1Z
 github.com/funinthecloud/protosource v0.0.6/go.mod h1:3iDMxCsaj7G+JjVy6hsUfRN2SNbFFMjD4D0EGZXqoQs=
 github.com/funinthecloud/protosource v0.0.7 h1:27CWV/Zthj0ddtf9/gEPunJ9pLxzf8rKUX7cBDZErjY=
 github.com/funinthecloud/protosource v0.0.7/go.mod h1:3iDMxCsaj7G+JjVy6hsUfRN2SNbFFMjD4D0EGZXqoQs=
+github.com/funinthecloud/protosource v0.0.8 h1:3MOAsSCmFJacyrEuo2r9R93bqCpbou5naLztpdxQkuM=
+github.com/funinthecloud/protosource v0.0.8/go.mod h1:3iDMxCsaj7G+JjVy6hsUfRN2SNbFFMjD4D0EGZXqoQs=
 github.com/goforj/wire v1.1.0 h1:16yALOdEg+9pWvREglPRVt6m6h65PbOy+sf+PuxXqI4=
 github.com/goforj/wire v1.1.0/go.mod h1:/pJ74r/owyfYdqeL+Yo3JOzl4Bg9vaFfYy8XMJv5oBs=
 github.com/google/cel-go v0.27.0 h1:e7ih85+4qVrBuqQWTW4FKSqZYokVuc3HnhH5keboFTo=
