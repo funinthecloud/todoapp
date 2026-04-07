@@ -29,7 +29,9 @@ go run ./cmd/setup/ create
 # Build Lambda binary
 GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/server/
 
-# Deploy via your preferred method (SAM, CDK, Terraform, etc.)
+# Deploy via SAM
+sam build && sam deploy --guided                  # first time
+sam build && sam deploy                           # subsequent
 ```
 
 Environment variables for Lambda: `EVENTS_TABLE` (default: events), `AGGREGATES_TABLE` (default: aggregates).
@@ -40,6 +42,7 @@ Environment variables for Lambda: `EVENTS_TABLE` (default: events), `AGGREGATES_
 cd frontend
 npm install
 npm run dev                                      # Vite dev server on :5173
+VITE_API_URL=https://todov1.api.drhayt.com npm run build  # production build
 ```
 
 ### After modifying proto files
@@ -48,6 +51,7 @@ npm run dev                                      # Vite dev server on :5173
 clang-format --style=file -i proto/**/*.proto    # format first
 buf generate                                     # bolt backend
 buf generate --template buf.gen.lambda.yaml      # lambda backend
+PATH="frontend/node_modules/.bin:$PATH" buf generate --template buf.gen.ts.yaml  # TS client
 cd backend-bolt && wire ./cmd/server/            # regenerate wire if needed
 cd ../backend-lambda && wire ./cmd/server/
 ```
@@ -72,3 +76,15 @@ clang-format --style=file -i proto/**/*.proto
 ## Domain
 
 Single aggregate `TodoList` with `map<string, TodoItem>` collection. Commands: Create, Rename, Archive, Unarchive, AddItem, UpdateItem, RemoveItem. UpdateItem replaces the full item (use for toggling completed, editing title, etc).
+
+## Gotchas
+
+- API Gateway lowercases all request headers. Check `x-actor` not `X-Actor` in Lambda extractors.
+- DynamoDB GSIs require both PK and SK attributes on an item to project it. If GSI SK is missing, the item silently disappears from query results.
+- `protosource_opaque_field` annotations on enum fields require protosource >= v0.0.8.
+
+## Upstream: protosource
+
+- Repo: `github.com/funinthecloud/protosource`, local at `$HOME/Developer/funinthecloud/protosource`
+- Codegen plugins: `protoc-gen-protosource` (Go), `protoc-gen-protosource-ts` (TS) -- install via `go install github.com/funinthecloud/protosource/cmd/protoc-gen-protosource@VERSION`
+- After upgrading: reinstall codegen plugins, then regenerate all (proto format + buf generate for all three templates)
