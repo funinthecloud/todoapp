@@ -24,13 +24,18 @@ message TodoList {
 
   string                id              = 1;
   int64                 version         = 2;
-  State                 state           = 3;
+  State                 state           = 3 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = {
+    attributes: [ { type: OPAQUE_KEY_TYPE_GSI2SK } ]
+  }];
   string                name            = 4;
   int64                 create_at       = 5 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = {
     attributes: [ { type: OPAQUE_KEY_TYPE_GSI1SK } ]
   }];
   string                create_by       = 6 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = {
-    attributes: [ { type: OPAQUE_KEY_TYPE_GSI1PK } ]
+    attributes: [
+      { type: OPAQUE_KEY_TYPE_GSI1PK },
+      { type: OPAQUE_KEY_TYPE_GSI2PK }
+    ]
   }];
   int64                 modify_at       = 7;
   string                modify_by       = 8;

@@ -155,6 +155,51 @@ func (c *HTTPClient) QueryByCreateByBetweenCreateAt(ctx context.Context, createB
 	return list.Items, nil
 }
 
+// QueryByCreateByViaGSI2 queries by create_by via GSI2.
+func (c *HTTPClient) QueryByCreateByViaGSI2(ctx context.Context, createBy string) ([]*TodoList, error) {
+	params := map[string]string{
+		"create_by": createBy,
+	}
+	list := &TodoListList{}
+	if err := c.c.Query(ctx, routePath, "by-create-by-with-state", params, list); err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+// QueryByCreateByWithState queries with a sort key condition (eq, lt, le, gt, ge, begins_with).
+// For between queries, use QueryByCreateByBetweenState instead.
+func (c *HTTPClient) QueryByCreateByWithState(ctx context.Context, createBy string, skOp string, state State) ([]*TodoList, error) {
+	if skOp == "between" {
+		return nil, fmt.Errorf("use QueryByCreateByBetweenState for between queries")
+	}
+	params := map[string]string{
+		"create_by": createBy,
+		"sk_op":     skOp,
+		"state":     strconv.FormatInt(int64(state), 10),
+	}
+	list := &TodoListList{}
+	if err := c.c.Query(ctx, routePath, "by-create-by-with-state", params, list); err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+// QueryByCreateByBetweenState queries with a between sort key condition (inclusive range).
+func (c *HTTPClient) QueryByCreateByBetweenState(ctx context.Context, createBy string, stateFrom State, stateTo State) ([]*TodoList, error) {
+	params := map[string]string{
+		"create_by": createBy,
+		"sk_op":     "between",
+		"state":     strconv.FormatInt(int64(stateFrom), 10),
+		"state2":    strconv.FormatInt(int64(stateTo), 10),
+	}
+	list := &TodoListList{}
+	if err := c.c.Query(ctx, routePath, "by-create-by-with-state", params, list); err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
 // Ensure strconv and fmt are used.
 var _ = strconv.FormatInt
 var _ = fmt.Errorf

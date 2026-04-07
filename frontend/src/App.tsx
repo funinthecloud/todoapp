@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { todoListClient, actorName } from "./api";
 import type { TodoList, TodoItem } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
+import { State } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
 import type { History } from "@protosource/client";
+import { APIError } from "@protosource/client";
 import { create as createProto } from "@bufbuild/protobuf";
 import { TodoItemSchema } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
 import "./App.css";
@@ -30,21 +32,29 @@ export default function App() {
 
   const loadMyLists = useCallback(async () => {
     try {
-      const results = await todoListClient.queryByCreateBy(actorName);
+      let results: TodoList[];
+      if (showArchived) {
+        results = await todoListClient.queryByCreateBy(actorName);
+      } else {
+        results = await todoListClient.queryByCreateByWithState(
+          actorName, "eq", State.ACTIVE
+        );
+      }
       setAllLists(results);
       setError(null);
     } catch (e: unknown) {
-      setError(`Failed to load lists: ${e instanceof Error ? e.message : e}`);
+      if (e instanceof APIError && e.statusCode === 404) {
+        setAllLists([]);
+        setError(null);
+      } else {
+        setError(`Failed to load lists: ${e instanceof Error ? e.message : e}`);
+      }
     }
-  }, []);
+  }, [showArchived]);
 
   useEffect(() => {
     loadMyLists();
   }, [loadMyLists]);
-
-  const visibleLists = showArchived
-    ? allLists
-    : allLists.filter((l) => l.state !== 2);
 
   const loadList = useCallback(async (id: string) => {
     try {
@@ -209,7 +219,7 @@ export default function App() {
           </label>
 
           <ul className="list-selector">
-            {visibleLists.map((entry) => (
+            {allLists.map((entry) => (
               <li
                 key={entry.id}
                 className={`${entry.id === selectedId ? "selected" : ""} ${entry.state === 2 ? "archived-entry" : ""}`}
@@ -221,7 +231,7 @@ export default function App() {
                 <span className="list-name">{entry.name}</span>
               </li>
             ))}
-            {visibleLists.length === 0 && (
+            {allLists.length === 0 && (
               <li className="empty-items">No lists yet.</li>
             )}
           </ul>

@@ -58,6 +58,7 @@ func (h *Handler) RegisterRoutes(router *protosource.Router) {
 	router.Handle("GET", "showcase/app/todolist/v1/{id}/history", h.HandleHistory)
 
 	router.Handle("GET", "showcase/app/todolist/v1/query/by-create-by", h.HandleQueryByCreateBy)
+	router.Handle("GET", "showcase/app/todolist/v1/query/by-create-by-with-state", h.HandleQueryByCreateByWithState)
 
 }
 
@@ -414,6 +415,68 @@ func (h *Handler) HandleQueryByCreateBy(ctx context.Context, request protosource
 	}
 
 	results, err := h.client.SelectTodoListByCreateByWithCreateAt(ctx, create_by, op, skVal)
+	if err != nil {
+		return errorResponse(http.StatusInternalServerError, "QUERY_EXEC", "query failed", err)
+	}
+	return queryResponse(request, results)
+
+}
+
+// HandleQueryByCreateByWithState queries GSI2 by partition key with optional sort key condition.
+func (h *Handler) HandleQueryByCreateByWithState(ctx context.Context, request protosource.Request) protosource.Response {
+	create_by := request.QueryParameters["create_by"]
+	if create_by == "" {
+		return errorResponse(http.StatusBadRequest, "QUERY_MISSING_PK", "missing required parameter: create_by", nil)
+	}
+
+	skOp := request.QueryParameters["sk_op"]
+
+	if skOp == "" {
+		results, err := h.client.SelectTodoListByCreateByViaGSI2(ctx, create_by)
+		if err != nil {
+			return errorResponse(http.StatusInternalServerError, "QUERY_EXEC", "query failed", err)
+		}
+		return queryResponse(request, results)
+	}
+
+	op, ok := parseSortOperator(skOp)
+	if !ok {
+		return errorResponse(http.StatusBadRequest, "QUERY_BAD_OP", fmt.Sprintf("invalid sort operator: %s", skOp), nil)
+	}
+
+	stateRaw := request.QueryParameters["state"]
+	if stateRaw == "" {
+		return errorResponse(http.StatusBadRequest, "QUERY_MISSING_SK", "missing required parameter: state", nil)
+	}
+	stateVal, stateErr := parseQueryParamEnum[State](stateRaw)
+	if stateErr != nil {
+		return errorResponse(http.StatusBadRequest, "QUERY_BAD_PARAM", fmt.Sprintf("invalid value for state: %v", stateErr), nil)
+	}
+
+	skVal := TodoListGSI2SK{
+		State: stateVal,
+	}
+
+	if op == opaquedata.Between {
+		stateRaw2 := request.QueryParameters["state2"]
+		if stateRaw2 == "" {
+			return errorResponse(http.StatusBadRequest, "QUERY_MISSING_SK", "missing required parameter: state2 (required for between)", nil)
+		}
+		stateVal2, stateErr2 := parseQueryParamEnum[State](stateRaw2)
+		if stateErr2 != nil {
+			return errorResponse(http.StatusBadRequest, "QUERY_BAD_PARAM", fmt.Sprintf("invalid value for state2: %v", stateErr2), nil)
+		}
+		skVal2 := TodoListGSI2SK{
+			State: stateVal2,
+		}
+		results, err := h.client.SelectTodoListByCreateByWithState(ctx, create_by, op, skVal, skVal2)
+		if err != nil {
+			return errorResponse(http.StatusInternalServerError, "QUERY_EXEC", "query failed", err)
+		}
+		return queryResponse(request, results)
+	}
+
+	results, err := h.client.SelectTodoListByCreateByWithState(ctx, create_by, op, skVal)
 	if err != nil {
 		return errorResponse(http.StatusInternalServerError, "QUERY_EXEC", "query failed", err)
 	}

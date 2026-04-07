@@ -62,6 +62,7 @@ export class TodoListHTTPClient {
     return list.items;
   }
 
+
   async queryByCreateByWithCreateAt(createBy: string, skOp: string, createAt: bigint): Promise<TodoList[]> {
     if (skOp === "between") {
       throw new Error("use queryByCreateByBetweenCreateAt for between queries");
@@ -83,6 +84,39 @@ export class TodoListHTTPClient {
       "create_at2": String(createAtTo),
     };
     const list = await this.client.query(routePath, "by-create-by", params, TodoListListSchema);
+    return list.items;
+  }
+
+  async queryByCreateByViaGSI2(createBy: string): Promise<TodoList[]> {
+    const params: Record<string, string> = {
+      "create_by": createBy,
+    };
+    const list = await this.client.query(routePath, "by-create-by-with-state", params, TodoListListSchema);
+    return list.items;
+  }
+
+
+  async queryByCreateByWithState(createBy: string, skOp: string, state: State): Promise<TodoList[]> {
+    if (skOp === "between") {
+      throw new Error("use queryByCreateByBetweenState for between queries");
+    }
+    const params: Record<string, string> = {
+      "create_by": createBy,
+      "sk_op": skOp,
+      "state": String(state),
+    };
+    const list = await this.client.query(routePath, "by-create-by-with-state", params, TodoListListSchema);
+    return list.items;
+  }
+
+  async queryByCreateByBetweenState(createBy: string, stateFrom: State, stateTo: State): Promise<TodoList[]> {
+    const params: Record<string, string> = {
+      "create_by": createBy,
+      "sk_op": "between",
+      "state": String(stateFrom),
+      "state2": String(stateTo),
+    };
+    const list = await this.client.query(routePath, "by-create-by-with-state", params, TodoListListSchema);
     return list.items;
   }
 
