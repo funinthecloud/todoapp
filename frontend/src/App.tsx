@@ -3,6 +3,7 @@ import { todoListClient, actorName } from "./api";
 import type { TodoList, TodoItem } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
 import { State } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
 import type { History } from "@protosource/client";
+import { APIError } from "@protosource/client";
 import { create as createProto } from "@bufbuild/protobuf";
 import { TodoItemSchema } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
 import "./App.css";
@@ -41,8 +42,13 @@ export default function App() {
       }
       setAllLists(results);
       setError(null);
-    } catch {
-      setAllLists([]);
+    } catch (e: unknown) {
+      if (e instanceof APIError && e.statusCode === 404) {
+        setAllLists([]);
+        setError(null);
+      } else {
+        setError(`Failed to load lists: ${e instanceof Error ? e.message : e}`);
+      }
     }
   }, [showArchived]);
 
