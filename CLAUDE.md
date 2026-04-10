@@ -48,13 +48,11 @@ VITE_API_URL=https://todov1.api.drhayt.com npm run build  # production build
 ### After modifying proto files
 
 ```bash
-clang-format --style=file -i proto/**/*.proto    # format first
-buf generate                                     # bolt backend
-buf generate --template buf.gen.lambda.yaml      # lambda backend
-PATH="frontend/node_modules/.bin:$PATH" buf generate --template buf.gen.ts.yaml  # TS client
-cd backend-bolt && wire ./cmd/server/            # regenerate wire if needed
-cd ../backend-lambda && wire ./cmd/server/
+make gen                                         # format, install plugins, generate all, tidy + wire
 ```
+
+Individual targets: `make tools`, `make gen-bolt`, `make gen-lambda`, `make gen-ts`, `make tidy`.
+`PROTOSOURCE_VERSION` is extracted from `backend-bolt/go.mod` so the plugins always match the library.
 
 ## Architecture
 
@@ -86,5 +84,5 @@ Single aggregate `TodoList` with `map<string, TodoItem>` collection. Commands: C
 ## Upstream: protosource
 
 - Repo: `github.com/funinthecloud/protosource`, local at `$HOME/Developer/funinthecloud/protosource`
-- Codegen plugins: `protoc-gen-protosource` (Go), `protoc-gen-protosource-ts` (TS) -- install via `go install github.com/funinthecloud/protosource/cmd/protoc-gen-protosource@VERSION`
-- After upgrading: reinstall codegen plugins, then regenerate all (proto format + buf generate for all three templates)
+- Codegen plugins: `protoc-gen-protosource` (Go), `protoc-gen-protosource-ts` (TS) -- installed by `make tools`
+- Upgrade workflow: `go get github.com/funinthecloud/protosource@vX.Y.Z` in both `backend-bolt` and `backend-lambda`, then `make gen`
