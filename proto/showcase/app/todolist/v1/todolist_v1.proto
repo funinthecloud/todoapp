@@ -2,11 +2,10 @@ syntax = "proto3";
 
 package showcase.app.todolist.v1;
 
-option go_package = "github.com/funinthecloud/todoapp/backend-bolt/gen/showcase/app/todolist/v1;todolistv1";
-
-import "funinthecloud/protosource/options/v1/options_v1.proto";
 import "buf/validate/validate.proto";
+import "funinthecloud/protosource/options/v1/options_v1.proto";
 
+option go_package                                                      = "github.com/funinthecloud/todoapp/backend-bolt/gen/showcase/app/todolist/v1;todolistv1";
 option (funinthecloud.protosource.options.v1.protosource_file).enabled = true;
 
 // ── Aggregate ──
@@ -18,25 +17,14 @@ enum State {
 }
 
 message TodoList {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .aggregate = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).aggregate = {
   };
-
   string                id              = 1;
   int64                 version         = 2;
-  State                 state           = 3 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = {
-    attributes: [ { type: OPAQUE_KEY_TYPE_GSI2SK } ]
-  }];
+  State                 state           = 3 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = { attributes: [ { type: OPAQUE_KEY_TYPE_GSI2SK } ] }];
   string                name            = 4;
-  int64                 create_at       = 5 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = {
-    attributes: [ { type: OPAQUE_KEY_TYPE_GSI1SK } ]
-  }];
-  string                create_by       = 6 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = {
-    attributes: [
-      { type: OPAQUE_KEY_TYPE_GSI1PK },
-      { type: OPAQUE_KEY_TYPE_GSI2PK }
-    ]
-  }];
+  int64                 create_at       = 5 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = { attributes: [ { type: OPAQUE_KEY_TYPE_GSI1SK } ] }];
+  string                create_by       = 6 [(funinthecloud.protosource.options.v1.protosource_opaque_field) = { attributes: [ { type: OPAQUE_KEY_TYPE_GSI1PK }, { type: OPAQUE_KEY_TYPE_GSI2PK } ] }];
   int64                 modify_at       = 7;
   string                modify_by       = 8;
   int32                 item_count      = 9;
@@ -59,8 +47,7 @@ message TodoItem {
 // ── Commands ──
 
 message Create {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .command = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).command = {
     produces_events: [ "Created" ]
     lifecycle: COMMAND_LIFECYCLE_CREATION
   };
@@ -70,8 +57,7 @@ message Create {
 }
 
 message Rename {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .command = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).command = {
     produces_events: [ "Renamed" ]
     lifecycle: COMMAND_LIFECYCLE_MUTATION
     allowed_states: [ "STATE_ACTIVE" ]
@@ -82,8 +68,7 @@ message Rename {
 }
 
 message Archive {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .command = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).command = {
     produces_events: [ "Archived" ]
     lifecycle: COMMAND_LIFECYCLE_MUTATION
     allowed_states: [ "STATE_ACTIVE" ]
@@ -93,8 +78,7 @@ message Archive {
 }
 
 message Unarchive {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .command = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).command = {
     produces_events: [ "Unarchived" ]
     lifecycle: COMMAND_LIFECYCLE_MUTATION
     allowed_states: [ "STATE_ARCHIVED" ]
@@ -104,8 +88,7 @@ message Unarchive {
 }
 
 message AddItem {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .command = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).command = {
     produces_events: [ "ItemAdded" ]
     lifecycle: COMMAND_LIFECYCLE_MUTATION
     allowed_states: [ "STATE_ACTIVE" ]
@@ -116,8 +99,7 @@ message AddItem {
 }
 
 message UpdateItem {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .command = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).command = {
     produces_events: [ "ItemUpdated" ]
     lifecycle: COMMAND_LIFECYCLE_MUTATION
     allowed_states: [ "STATE_ACTIVE" ]
@@ -128,8 +110,7 @@ message UpdateItem {
 }
 
 message RemoveItem {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .command = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).command = {
     produces_events: [ "ItemRemoved" ]
     lifecycle: COMMAND_LIFECYCLE_MUTATION
     allowed_states: [ "STATE_ACTIVE" ]
@@ -142,8 +123,7 @@ message RemoveItem {
 // ── Events ──
 
 message Created {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .event = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).event = {
     sets_state: "STATE_ACTIVE"
   };
   string id      = 1;
@@ -154,8 +134,7 @@ message Created {
 }
 
 message Renamed {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .event = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).event = {
   };
   string id      = 1;
   int64  version = 2;
@@ -165,8 +144,7 @@ message Renamed {
 }
 
 message Archived {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .event = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).event = {
     sets_state: "STATE_ARCHIVED"
   };
   string id      = 1;
@@ -176,8 +154,7 @@ message Archived {
 }
 
 message Unarchived {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .event = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).event = {
     sets_state: "STATE_ACTIVE"
   };
   string id      = 1;
@@ -187,9 +164,12 @@ message Unarchived {
 }
 
 message ItemAdded {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .event = {
-    collection: { target: "items", action: COLLECTION_ACTION_ADD, key_field: "item_id" }
+  option (funinthecloud.protosource.options.v1.protosource_message_type).event = {
+    collection: {
+      target: "items"
+      action: COLLECTION_ACTION_ADD
+      key_field: "item_id"
+    }
   };
   string   id      = 1;
   int64    version = 2;
@@ -199,9 +179,12 @@ message ItemAdded {
 }
 
 message ItemUpdated {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .event = {
-    collection: { target: "items", action: COLLECTION_ACTION_ADD, key_field: "item_id" }
+  option (funinthecloud.protosource.options.v1.protosource_message_type).event = {
+    collection: {
+      target: "items"
+      action: COLLECTION_ACTION_ADD
+      key_field: "item_id"
+    }
   };
   string   id      = 1;
   int64    version = 2;
@@ -211,9 +194,12 @@ message ItemUpdated {
 }
 
 message ItemRemoved {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .event = {
-    collection: { target: "items", action: COLLECTION_ACTION_REMOVE, key_field: "item_id" }
+  option (funinthecloud.protosource.options.v1.protosource_message_type).event = {
+    collection: {
+      target: "items"
+      action: COLLECTION_ACTION_REMOVE
+      key_field: "item_id"
+    }
   };
   string id      = 1;
   int64  version = 2;
@@ -225,8 +211,7 @@ message ItemRemoved {
 // ── Snapshot ──
 
 message Snapshot {
-  option (funinthecloud.protosource.options.v1.protosource_message_type)
-      .snapshot = {
+  option (funinthecloud.protosource.options.v1.protosource_message_type).snapshot = {
     every_n_events: 50
   };
   string   id       = 1;
