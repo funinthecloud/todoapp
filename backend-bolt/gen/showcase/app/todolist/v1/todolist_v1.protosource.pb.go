@@ -443,13 +443,13 @@ func (m *Rename) ValidateVersion(version int64) error {
 	}
 	return nil
 }
-func (m *Rename) Authorize(aggregate protosource.Aggregate) error {
+func (m *Rename) GuardState(aggregate protosource.Aggregate) error {
 	a := aggregate.(*TodoList)
 	switch a.GetState() {
 	case State_STATE_ACTIVE:
 		return nil
 	default:
-		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrUnauthorized)
+		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrStateNotAllowed)
 	}
 }
 func (m *Rename) EmitEvents(aggregate protosource.Aggregate) []protosource.Event {
@@ -478,13 +478,13 @@ func (m *Archive) ValidateVersion(version int64) error {
 	}
 	return nil
 }
-func (m *Archive) Authorize(aggregate protosource.Aggregate) error {
+func (m *Archive) GuardState(aggregate protosource.Aggregate) error {
 	a := aggregate.(*TodoList)
 	switch a.GetState() {
 	case State_STATE_ACTIVE:
 		return nil
 	default:
-		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrUnauthorized)
+		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrStateNotAllowed)
 	}
 }
 func (m *Archive) EmitEvents(aggregate protosource.Aggregate) []protosource.Event {
@@ -513,13 +513,13 @@ func (m *Unarchive) ValidateVersion(version int64) error {
 	}
 	return nil
 }
-func (m *Unarchive) Authorize(aggregate protosource.Aggregate) error {
+func (m *Unarchive) GuardState(aggregate protosource.Aggregate) error {
 	a := aggregate.(*TodoList)
 	switch a.GetState() {
 	case State_STATE_ARCHIVED:
 		return nil
 	default:
-		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrUnauthorized)
+		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrStateNotAllowed)
 	}
 }
 func (m *Unarchive) EmitEvents(aggregate protosource.Aggregate) []protosource.Event {
@@ -548,13 +548,13 @@ func (m *AddItem) ValidateVersion(version int64) error {
 	}
 	return nil
 }
-func (m *AddItem) Authorize(aggregate protosource.Aggregate) error {
+func (m *AddItem) GuardState(aggregate protosource.Aggregate) error {
 	a := aggregate.(*TodoList)
 	switch a.GetState() {
 	case State_STATE_ACTIVE:
 		return nil
 	default:
-		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrUnauthorized)
+		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrStateNotAllowed)
 	}
 }
 func (m *AddItem) EmitEvents(aggregate protosource.Aggregate) []protosource.Event {
@@ -583,13 +583,13 @@ func (m *UpdateItem) ValidateVersion(version int64) error {
 	}
 	return nil
 }
-func (m *UpdateItem) Authorize(aggregate protosource.Aggregate) error {
+func (m *UpdateItem) GuardState(aggregate protosource.Aggregate) error {
 	a := aggregate.(*TodoList)
 	switch a.GetState() {
 	case State_STATE_ACTIVE:
 		return nil
 	default:
-		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrUnauthorized)
+		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrStateNotAllowed)
 	}
 }
 func (m *UpdateItem) EmitEvents(aggregate protosource.Aggregate) []protosource.Event {
@@ -618,13 +618,13 @@ func (m *RemoveItem) ValidateVersion(version int64) error {
 	}
 	return nil
 }
-func (m *RemoveItem) Authorize(aggregate protosource.Aggregate) error {
+func (m *RemoveItem) GuardState(aggregate protosource.Aggregate) error {
 	a := aggregate.(*TodoList)
 	switch a.GetState() {
 	case State_STATE_ACTIVE:
 		return nil
 	default:
-		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrUnauthorized)
+		return fmt.Errorf("command %s not allowed in state %s: %w", m.CommandName(), a.GetState(), protosource.ErrStateNotAllowed)
 	}
 }
 func (m *RemoveItem) EmitEvents(aggregate protosource.Aggregate) []protosource.Event {
