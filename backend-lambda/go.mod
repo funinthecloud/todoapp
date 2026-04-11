@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.14
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.57.1
-	github.com/funinthecloud/protosource v0.1.2
+	github.com/funinthecloud/protosource v0.1.3
 	github.com/funinthecloud/protosource-auth v0.0.0-20260411044848-f71da1532fc2
 	github.com/goforj/wire v1.1.0
 	google.golang.org/protobuf v1.36.11
