@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -33,14 +34,24 @@ func main() {
 	router.SetCORS(protosource.CORSConfig{
 		AllowOrigin:  "*",
 		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
-		AllowHeaders: "Content-Type,X-Actor",
+		AllowHeaders: "Content-Type,X-Actor,Authorization",
 	})
 
 	handler := awslambda.WrapRouter(router, extractActor)
 	lambda.Start(handler)
 }
 
+// extractActor prefers an Authorization: Bearer <shadow-token> header
+// (dereferenced by the httpauthz Authorizer wired in wire.go) and
+// falls back to X-Actor for allowall/developer mode. Returns
+// "anonymous" when neither header is present so the generated
+// handler's CMD_NO_ACTOR check still passes.
 func extractActor(req events.APIGatewayProxyRequest) string {
+	for _, key := range []string{"Authorization", "authorization"} {
+		if auth := req.Headers[key]; strings.HasPrefix(auth, "Bearer ") {
+			return strings.TrimPrefix(auth, "Bearer ")
+		}
+	}
 	if actor := req.Headers["x-actor"]; actor != "" {
 		return actor
 	}

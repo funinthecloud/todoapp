@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/funinthecloud/protosource"
+	"github.com/funinthecloud/protosource/authz"
 	"github.com/funinthecloud/protosource/opaquedata"
 	responsev1 "github.com/funinthecloud/protosource/response/v1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -27,13 +28,25 @@ type Repo interface {
 
 // Handler provides request handler functions for the TodoList aggregate.
 type Handler struct {
-	repo   Repo
-	client *TodoListClient
+	repo       Repo
+	client     *TodoListClient
+	authorizer authz.Authorizer
 }
 
-// NewHandler creates a new Handler instance with the given repository and client.
-func NewHandler(repo Repo, client *TodoListClient) *Handler {
-	return &Handler{repo: repo, client: client}
+// NewHandler creates a new Handler instance with the given repository, client,
+// and authorizer. Every generated command handler calls authorizer.Authorize
+// with the canonical function name "showcase.app.todolist.v1.{CommandMessageName}"
+// before running the command pipeline. Applications that do not enforce
+// authorization at this layer should wire in allowall.Authorizer.
+//
+// authorizer is required; passing nil panics immediately with a descriptive
+// message rather than deferring to an opaque nil-pointer dereference on the
+// first request.
+func NewHandler(repo Repo, client *TodoListClient, authorizer authz.Authorizer) *Handler {
+	if authorizer == nil {
+		panic("todolistv1.NewHandler: authorizer must not be nil (use allowall.Authorizer{} for no enforcement)")
+	}
+	return &Handler{repo: repo, client: client, authorizer: authorizer}
 }
 
 // RegisterRoutes registers all handler routes on the given router.
@@ -64,6 +77,11 @@ func (h *Handler) RegisterRoutes(router *protosource.Router) {
 
 // HandleCreate processes a Create command.
 func (h *Handler) HandleCreate(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.Create")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	if request.Actor == "" {
 		return errorResponse(http.StatusUnauthorized, "CMD_NO_ACTOR", "no actor identity found", nil)
 	}
@@ -95,6 +113,11 @@ func (h *Handler) HandleCreate(ctx context.Context, request protosource.Request)
 
 // HandleRename processes a Rename command.
 func (h *Handler) HandleRename(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.Rename")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	if request.Actor == "" {
 		return errorResponse(http.StatusUnauthorized, "CMD_NO_ACTOR", "no actor identity found", nil)
 	}
@@ -126,6 +149,11 @@ func (h *Handler) HandleRename(ctx context.Context, request protosource.Request)
 
 // HandleArchive processes a Archive command.
 func (h *Handler) HandleArchive(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.Archive")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	if request.Actor == "" {
 		return errorResponse(http.StatusUnauthorized, "CMD_NO_ACTOR", "no actor identity found", nil)
 	}
@@ -157,6 +185,11 @@ func (h *Handler) HandleArchive(ctx context.Context, request protosource.Request
 
 // HandleUnarchive processes a Unarchive command.
 func (h *Handler) HandleUnarchive(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.Unarchive")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	if request.Actor == "" {
 		return errorResponse(http.StatusUnauthorized, "CMD_NO_ACTOR", "no actor identity found", nil)
 	}
@@ -188,6 +221,11 @@ func (h *Handler) HandleUnarchive(ctx context.Context, request protosource.Reque
 
 // HandleAddItem processes a AddItem command.
 func (h *Handler) HandleAddItem(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.AddItem")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	if request.Actor == "" {
 		return errorResponse(http.StatusUnauthorized, "CMD_NO_ACTOR", "no actor identity found", nil)
 	}
@@ -219,6 +257,11 @@ func (h *Handler) HandleAddItem(ctx context.Context, request protosource.Request
 
 // HandleUpdateItem processes a UpdateItem command.
 func (h *Handler) HandleUpdateItem(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.UpdateItem")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	if request.Actor == "" {
 		return errorResponse(http.StatusUnauthorized, "CMD_NO_ACTOR", "no actor identity found", nil)
 	}
@@ -250,6 +293,11 @@ func (h *Handler) HandleUpdateItem(ctx context.Context, request protosource.Requ
 
 // HandleRemoveItem processes a RemoveItem command.
 func (h *Handler) HandleRemoveItem(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.RemoveItem")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	if request.Actor == "" {
 		return errorResponse(http.StatusUnauthorized, "CMD_NO_ACTOR", "no actor identity found", nil)
 	}
@@ -607,6 +655,23 @@ func errorResponse(statusCode int, code, message string, cause error) protosourc
 	}
 }
 
+// authzErrorResponse maps an authz.Authorizer error to an HTTP response.
+// ErrUnauthenticated yields 401; ErrForbidden yields 403. Any other error is
+// treated as forbidden for conservative safety — implementations should wrap
+// their internal errors in one of the typed sentinels when they want a
+// specific status code. Error details are intentionally not leaked to the
+// response body.
+func authzErrorResponse(err error) protosource.Response {
+	switch {
+	case errors.Is(err, authz.ErrUnauthenticated):
+		return errorResponse(http.StatusUnauthorized, "AUTHZ_UNAUTHENTICATED", "unauthenticated", nil)
+	case errors.Is(err, authz.ErrForbidden):
+		return errorResponse(http.StatusForbidden, "AUTHZ_FORBIDDEN", "forbidden", nil)
+	default:
+		return errorResponse(http.StatusForbidden, "AUTHZ_ERROR", "authorization failed", nil)
+	}
+}
+
 // commandErrorResponse maps protosource errors to appropriate HTTP responses.
 func commandErrorResponse(err error) protosource.Response {
 	switch {
@@ -620,8 +685,8 @@ func commandErrorResponse(err error) protosource.Response {
 		return errorResponse(http.StatusNotFound, "CMD_NOT_CREATED", "aggregate not found", nil)
 	case errors.Is(err, protosource.ErrAggregateNotFound):
 		return errorResponse(http.StatusNotFound, "CMD_NOT_FOUND", "aggregate not found", nil)
-	case errors.Is(err, protosource.ErrUnauthorized):
-		return errorResponse(http.StatusForbidden, "CMD_UNAUTHORIZED", "command not authorized", nil)
+	case errors.Is(err, protosource.ErrStateNotAllowed):
+		return errorResponse(http.StatusConflict, "CMD_STATE_VIOLATION", "command not allowed in current aggregate state", nil)
 	default:
 		return errorResponse(http.StatusInternalServerError, "CMD_INTERNAL", fmt.Sprintf("internal error: %s", err), nil)
 	}
