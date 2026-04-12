@@ -9,14 +9,11 @@ package main
 import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/funinthecloud/protosource"
-	"github.com/funinthecloud/protosource-auth/authz/httpauthz"
-	"github.com/funinthecloud/protosource/authz"
 	"github.com/funinthecloud/protosource/authz/allowall"
 	"github.com/funinthecloud/protosource/serializers/protobinaryserializer"
 	"github.com/funinthecloud/protosource/stores/dynamodbstore"
 	"github.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1"
 	"github.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1/todolistv1dynamodb"
-	"os"
 )
 
 // Injectors from wire.go:
@@ -31,7 +28,7 @@ func InitializeRouter(client *dynamodb.Client, eventsTable dynamodbstore.EventsT
 	serializer := protobinaryserializer.NewSerializer()
 	repository := todolistv1dynamodb.ProvideRepository(dynamoDBStore, serializer)
 	todoListClient := todolistv1.NewTodoListClient(store)
-	authorizer := provideAuthorizer()
+	authorizer := allowall.Provide()
 	handler := todolistv1.NewHandler(repository, todoListClient, authorizer)
 	router := provideRouter(handler)
 	return router, nil
@@ -43,15 +40,4 @@ func provideRouter(
 	todolistHandler *todolistv1.Handler,
 ) *protosource.Router {
 	return protosource.NewRouter(todolistHandler)
-}
-
-// provideAuthorizer returns an httpauthz.Authorizer pointing at the
-// protosource-auth service URL supplied by PROTOSOURCE_AUTH_URL, or
-// allowall.Authorizer{} when the env var is empty. Production lambda
-// deployments set PROTOSOURCE_AUTH_URL to the auth service's endpoint.
-func provideAuthorizer() authz.Authorizer {
-	if url := os.Getenv("PROTOSOURCE_AUTH_URL"); url != "" {
-		return httpauthz.New(url)
-	}
-	return allowall.Authorizer{}
 }
