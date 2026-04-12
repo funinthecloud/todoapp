@@ -13,9 +13,7 @@ import (
 	opaquedynamo "github.com/funinthecloud/protosource/opaquedata/dynamo"
 	"github.com/funinthecloud/protosource/serializers/protobinaryserializer"
 	"github.com/funinthecloud/protosource/stores/dynamodbstore"
-
 	todolistv1 "github.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1"
-	todolistv1dynamodb "github.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1/todolistv1dynamodb"
 )
 
 func provideRouter(
@@ -36,7 +34,7 @@ func InitializeRouter(
 		allowall.ProviderSet,
 		dynamodbstore.ProviderSet,
 		protobinaryserializer.ProviderSet,
-		todolistv1dynamodb.ProviderSet,
+		todolistv1.ProviderSet,
 		todolistv1.NewTodoListClient,
 		todolistv1.NewHandler,
 		provideRouter,

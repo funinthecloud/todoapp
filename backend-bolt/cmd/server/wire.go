@@ -10,7 +10,6 @@ import (
 	"github.com/funinthecloud/protosource/authz/allowall"
 	"github.com/funinthecloud/protosource/serializers/protobinaryserializer"
 	"github.com/funinthecloud/protosource/stores/boltdbstore"
-
 	todolistv1 "github.com/funinthecloud/todoapp/backend-bolt/gen/showcase/app/todolist/v1"
 )
 

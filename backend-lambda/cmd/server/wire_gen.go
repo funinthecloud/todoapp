@@ -13,7 +13,6 @@ import (
 	"github.com/funinthecloud/protosource/serializers/protobinaryserializer"
 	"github.com/funinthecloud/protosource/stores/dynamodbstore"
 	"github.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1"
-	"github.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1/todolistv1dynamodb"
 )
 
 // Injectors from wire.go:
@@ -26,7 +25,7 @@ func InitializeRouter(client *dynamodb.Client, eventsTable dynamodbstore.EventsT
 		return nil, err
 	}
 	serializer := protobinaryserializer.NewSerializer()
-	repository := todolistv1dynamodb.ProvideRepository(dynamoDBStore, serializer)
+	repository := todolistv1.ProvideRepository(dynamoDBStore, serializer)
 	todoListClient := todolistv1.NewTodoListClient(store)
 	authorizer := allowall.Provide()
 	handler := todolistv1.NewHandler(repository, todoListClient, authorizer)
