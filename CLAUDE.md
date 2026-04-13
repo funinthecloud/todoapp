@@ -79,8 +79,9 @@ Single aggregate `TodoList` with `map<string, TodoItem>` collection. Commands: C
 
 Both backends wire an `authz.Authorizer` via `provideAuthorizer()` in `cmd/server/wire.go`:
 
-- `PROTOSOURCE_AUTH_URL` set → `httpauthz.New(url)` dereferences each request's `Authorization: Bearer <shadow-token>` against the running auth service
+- `PROTOSOURCE_AUTH_URL` set → `httpauthz.New(url)` dereferences each request's `Authorization: Bearer <shadow-token>` against the running auth service via HTTP
 - `PROTOSOURCE_AUTH_URL` unset → `allowall.Authorizer{}` (developer flow, trusts the `X-Actor` header)
+- **Planned:** switch to `directauthz.New(checker)` for the Lambda backend — in-process authorization against shared DynamoDB tables, no HTTP round-trip. See `protosource-auth/authz/directauthz/`.
 
 The `actorExtractor` in each backend's `main.go` prefers `Authorization: Bearer <token>` and falls back to `X-Actor`. On the generated handler side, protosource v0.1.3's template reads `authz.UserIDFromContext(ctx)` first — so in httpauthz mode the aggregate's `create_by` / `modify_by` fields carry the resolved user id, not the raw bearer token.
 
@@ -96,6 +97,6 @@ End-to-end against DynamoDB Local: see [protosource-auth/README.md](https://gith
 ## Upstream dependencies
 
 - **`github.com/funinthecloud/protosource`** — the framework. Local at `$HOME/Developer/funinthecloud/protosource`. Codegen plugins `protoc-gen-protosource` (Go) and `protoc-gen-protosource-ts` (TS) installed by `make tools`.
-- **`github.com/funinthecloud/protosource-auth`** — the shadow-token auth service. Only the `authz/httpauthz` package is imported here (by the backends' `wire.go`) to plug in as an `authz.Authorizer` pointing at a running auth instance. Local at `$HOME/Developer/funinthecloud/protosource-auth`.
+- **`github.com/funinthecloud/protosource-auth`** — the shadow-token auth service. Imports `authz/httpauthz` (HTTP-based authorizer) and will migrate to `authz/directauthz` (in-process, shared DynamoDB tables) for the Lambda backend. Also provides `service.Checker` for direct authorization. Local at `$HOME/Developer/funinthecloud/protosource-auth`.
 
 Upgrade workflow: `go get github.com/funinthecloud/protosource@vX.Y.Z` in both `backend-bolt` and `backend-lambda`, `buf dep update` at the repo root, then `make gen`. Wire regeneration happens automatically as part of `make gen`.
