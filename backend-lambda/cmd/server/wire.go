@@ -7,6 +7,7 @@ import (
 	"github.com/goforj/wire"
 
 	"github.com/funinthecloud/protosource"
+	"github.com/funinthecloud/protosource/authz"
 	"github.com/funinthecloud/protosource/authz/allowall"
 	"github.com/funinthecloud/protosource/aws/dynamoclient"
 	"github.com/funinthecloud/protosource/opaquedata"
@@ -40,4 +41,9 @@ func InitializeRouter(
 		provideRouter,
 	)
 	return nil, nil
+}
+
+func InitializeAuthorizer() authz.Authorizer {
+	wire.Build(allowall.ProviderSet)
+	return nil
 }

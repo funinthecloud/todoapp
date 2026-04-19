@@ -33,6 +33,11 @@ func InitializeHandler(repo *protosource.Repository) *todolistv1.Handler {
 	return handler
 }
 
+func InitializeAuthorizer() authz.Authorizer {
+	authorizer := allowall.Provide()
+	return authorizer
+}
+
 // wire.go:
 
 func provideStore() (*boltdbstore.BoltDBStore, error) {

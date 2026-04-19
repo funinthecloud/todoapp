@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"strings"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/funinthecloud/protosource"
 	"github.com/funinthecloud/protosource/adapters/awslambda"
+	"github.com/funinthecloud/protosource/authz"
 	"github.com/funinthecloud/protosource/stores/dynamodbstore"
 )
 
@@ -27,18 +29,14 @@ func main() {
 	eventsTable := dynamodbstore.EventsTableName(envOrDefault("EVENTS_TABLE", "events"))
 	aggregatesTable := dynamodbstore.AggregatesTableName(envOrDefault("AGGREGATES_TABLE", "aggregates"))
 
+	authorizer := InitializeAuthorizer()
+
 	router, err := InitializeRouter(client, eventsTable, aggregatesTable)
 	if err != nil {
 		panic(err)
 	}
 
-	router.Handle("GET", "whoami", func(_ context.Context, req protosource.Request) protosource.Response {
-		return protosource.Response{
-			StatusCode: http.StatusOK,
-			Headers:    map[string]string{"Content-Type": "application/json"},
-			Body:       `{"actor":"` + req.Actor + `"}`,
-		}
-	})
+	router.Handle("GET", "whoami", whoamiHandler(authorizer))
 
 	router.SetCORS(protosource.CORSConfig{
 		AllowOrigin:  "*",
@@ -48,6 +46,30 @@ func main() {
 
 	handler := awslambda.WrapRouter(router, extractActor)
 	lambda.Start(handler)
+}
+
+func whoamiHandler(authorizer authz.Authorizer) protosource.HandlerFunc {
+	return func(ctx context.Context, req protosource.Request) protosource.Response {
+		enrichedCtx, err := authorizer.Authorize(ctx, req, "")
+		if err != nil {
+			body, _ := json.Marshal(map[string]string{"error": "unauthorized"})
+			return protosource.Response{
+				StatusCode: http.StatusUnauthorized,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       string(body),
+			}
+		}
+		actor := authz.UserIDFromContext(enrichedCtx)
+		if actor == "" {
+			actor = req.Actor
+		}
+		body, _ := json.Marshal(map[string]string{"actor": actor})
+		return protosource.Response{
+			StatusCode: http.StatusOK,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       string(body),
+		}
+	}
 }
 
 // extractActor prefers an Authorization: Bearer <shadow-token> header

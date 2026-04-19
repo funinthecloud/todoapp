@@ -9,6 +9,7 @@ package main
 import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/funinthecloud/protosource"
+	"github.com/funinthecloud/protosource/authz"
 	"github.com/funinthecloud/protosource/authz/allowall"
 	"github.com/funinthecloud/protosource/serializers/protobinaryserializer"
 	"github.com/funinthecloud/protosource/stores/dynamodbstore"
@@ -31,6 +32,11 @@ func InitializeRouter(client *dynamodb.Client, eventsTable dynamodbstore.EventsT
 	handler := todolistv1.NewHandler(repository, todoListClient, authorizer)
 	router := provideRouter(handler)
 	return router, nil
+}
+
+func InitializeAuthorizer() authz.Authorizer {
+	authorizer := allowall.Provide()
+	return authorizer
 }
 
 // wire.go:

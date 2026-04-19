@@ -19,11 +19,15 @@ const shadowToken = getShadowCookie();
 if (!shadowToken) {
   window.location.href = getAuthUrl();
 } else {
-  createClient(shadowToken).then(({ client, actor }) => {
-    createRoot(document.getElementById("root")!).render(
-      <StrictMode>
-        <App client={client} actor={actor} />
-      </StrictMode>,
-    );
-  });
+  createClient(shadowToken)
+    .then(({ client, actor }) => {
+      createRoot(document.getElementById("root")!).render(
+        <StrictMode>
+          <App client={client} actor={actor} />
+        </StrictMode>,
+      );
+    })
+    .catch(() => {
+      window.location.href = getAuthUrl();
+    });
 }

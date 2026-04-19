@@ -41,3 +41,8 @@ func InitializeHandler(repo *protosource.Repository) *todolistv1.Handler {
 	)
 	return nil
 }
+
+func InitializeAuthorizer() authz.Authorizer {
+	wire.Build(allowall.ProviderSet)
+	return nil
+}
