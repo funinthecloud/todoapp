@@ -50,7 +50,7 @@ func main() {
 // making the command's actor the human-readable user id.
 func whoamiHandler(authorizer authz.Authorizer) protosource.HandlerFunc {
 	return func(ctx context.Context, req protosource.Request) protosource.Response {
-		enrichedCtx, err := authorizer.Authorize(ctx, req, "")
+		enrichedCtx, err := authorizer.Authorize(ctx, req, "showcase.app.todolist.v1.WhoAmI")
 		if err != nil {
 			body, _ := json.Marshal(map[string]string{"error": "unauthorized"})
 			return protosource.Response{
