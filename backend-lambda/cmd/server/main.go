@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"strings"
 
@@ -30,6 +31,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	router.Handle("GET", "whoami", func(_ context.Context, req protosource.Request) protosource.Response {
+		return protosource.Response{
+			StatusCode: http.StatusOK,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       `{"actor":"` + req.Actor + `"}`,
+		}
+	})
 
 	router.SetCORS(protosource.CORSConfig{
 		AllowOrigin:  "*",

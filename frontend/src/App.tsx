@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { todoListClient, actorName } from "./api";
 import type { TodoList, TodoItem } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
 import { State } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
 import type { History } from "@protosource/client";
 import { APIError } from "@protosource/client";
 import { create as createProto } from "@bufbuild/protobuf";
 import { TodoItemSchema } from "./gen/showcase/app/todolist/v1/todolist_v1_pb.js";
+import type { TodoListHTTPClient } from "./gen/showcase/app/todolist/v1/todolist_v1.protosource.client.js";
 import "./App.css";
 
 function generateId(): string {
@@ -18,7 +18,12 @@ function generateId(): string {
   });
 }
 
-export default function App() {
+interface AppProps {
+  client: TodoListHTTPClient;
+  actor: string;
+}
+
+export default function App({ client: todoListClient, actor }: AppProps) {
   const [allLists, setAllLists] = useState<TodoList[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -34,10 +39,10 @@ export default function App() {
     try {
       let results: TodoList[];
       if (showArchived) {
-        results = await todoListClient.queryByCreateBy(actorName);
+        results = await todoListClient.queryByCreateBy(actor);
       } else {
         results = await todoListClient.queryByCreateByWithState(
-          actorName, "eq", State.ACTIVE
+          actor, "eq", State.ACTIVE
         );
       }
       setAllLists(results);

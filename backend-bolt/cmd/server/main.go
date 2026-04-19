@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,6 +20,14 @@ func main() {
 	router := protosource.NewRouter()
 	handler := InitializeHandler(repo)
 	handler.RegisterRoutes(router)
+
+	router.Handle("GET", "whoami", func(_ context.Context, req protosource.Request) protosource.Response {
+		return protosource.Response{
+			StatusCode: http.StatusOK,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       `{"actor":"` + req.Actor + `"}`,
+		}
+	})
 
 	router.SetCORS(protosource.CORSConfig{
 		AllowOrigin:  "*",
