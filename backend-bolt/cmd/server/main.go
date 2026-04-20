@@ -47,16 +47,19 @@ func provideAuthorizer() authz.Authorizer {
 	))
 }
 
-// corsMiddleware handles CORS with credentials support. Echoes the request
-// Origin header to allow cross-origin requests with cookies.
+// corsMiddleware handles CORS with credentials support. Validates the
+// request Origin against CORS_ALLOWED_ORIGINS (comma-separated) or
+// defaults to http://localhost:5173 for local dev.
 func corsMiddleware(next http.Handler) http.Handler {
+	allowed := buildAllowedOrigins()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin != "" {
+		if origin != "" && allowed[origin] {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type,X-Actor,Authorization")
+			w.Header().Set("Vary", "Origin")
 		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -64,6 +67,20 @@ func corsMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func buildAllowedOrigins() map[string]bool {
+	raw := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if raw == "" {
+		raw = "http://localhost:5173"
+	}
+	m := make(map[string]bool)
+	for _, o := range strings.Split(raw, ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			m[o] = true
+		}
+	}
+	return m
 }
 
 func whoamiHandler(authorizer authz.Authorizer) protosource.HandlerFunc {

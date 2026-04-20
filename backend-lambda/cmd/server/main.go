@@ -46,14 +46,20 @@ func main() {
 }
 
 // corsWrapper adds CORS headers with credentials support to every Lambda
-// response. Echoes the request Origin header and handles OPTIONS preflight.
+// response. Validates the request Origin against CORS_ALLOWED_ORIGINS
+// (comma-separated) or defaults to https://todoapp.drhayt.com.
 func corsWrapper(
 	next func(context.Context, events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error),
 ) func(context.Context, events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	allowed := buildAllowedOrigins()
 	return func(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		origin := req.Headers["origin"]
 		if origin == "" {
 			origin = req.Headers["Origin"]
+		}
+
+		if !allowed[origin] {
+			origin = ""
 		}
 
 		if req.HTTPMethod == http.MethodOptions && origin != "" {
@@ -64,6 +70,7 @@ func corsWrapper(
 					"Access-Control-Allow-Credentials": "true",
 					"Access-Control-Allow-Methods":     "GET,POST,PUT,DELETE,OPTIONS",
 					"Access-Control-Allow-Headers":     "Content-Type,X-Actor,Authorization",
+					"Vary":                             "Origin",
 				},
 			}, nil
 		}
@@ -75,6 +82,7 @@ func corsWrapper(
 			}
 			resp.Headers["Access-Control-Allow-Origin"] = origin
 			resp.Headers["Access-Control-Allow-Credentials"] = "true"
+			resp.Headers["Vary"] = "Origin"
 		}
 		return resp, err
 	}
@@ -149,6 +157,20 @@ func parseCookieValue(header, name string) string {
 		}
 	}
 	return ""
+}
+
+func buildAllowedOrigins() map[string]bool {
+	raw := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if raw == "" {
+		raw = "https://todoapp.drhayt.com"
+	}
+	m := make(map[string]bool)
+	for _, o := range strings.Split(raw, ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			m[o] = true
+		}
+	}
+	return m
 }
 
 func envOrDefault(key, fallback string) string {
