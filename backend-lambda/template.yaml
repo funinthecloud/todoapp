@@ -6,12 +6,6 @@ Globals:
   Function:
     Timeout: 10
     MemorySize: 128
-  Api:
-    Cors:
-      AllowOrigin: "'https://todoapp.drhayt.com'"
-      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-      AllowHeaders: "'Content-Type,X-Actor,Authorization'"
-      AllowCredentials: true
 
 Parameters:
   EventsTableName:
