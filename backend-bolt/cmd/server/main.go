@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/funinthecloud/protosource"
 	"github.com/funinthecloud/protosource/adapters/httpstandard"
 	"github.com/funinthecloud/protosource/authz"
+	"github.com/funinthecloud/protosource/authz/allowall"
+	"github.com/funinthecloud/protosource-auth/authz/httpauthz"
 )
 
 func main() {
@@ -19,10 +22,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	authorizer := InitializeAuthorizer()
+	authorizer := provideAuthorizer()
 
 	router := protosource.NewRouter()
-	handler := InitializeHandler(repo)
+	handler := InitializeHandler(repo, authorizer)
 	handler.RegisterRoutes(router)
 
 	router.Handle("GET", "whoami", whoamiHandler(authorizer))
@@ -30,6 +33,18 @@ func main() {
 	addr := ":8080"
 	fmt.Printf("Showcase server listening on %s\n", addr)
 	log.Fatal(http.ListenAndServe(addr, corsMiddleware(httpstandard.WrapRouter(router, actorExtractor))))
+}
+
+// provideAuthorizer returns httpauthz when PROTOSOURCE_AUTH_URL is set,
+// otherwise falls back to allowall for local development.
+func provideAuthorizer() authz.Authorizer {
+	authURL := os.Getenv("PROTOSOURCE_AUTH_URL")
+	if authURL == "" {
+		return allowall.Authorizer{}
+	}
+	return httpauthz.New(authURL, httpauthz.WithTokenSource(
+		httpauthz.Chain(httpauthz.Cookie("shadow"), httpauthz.AuthorizationHeader()),
+	))
 }
 
 // corsMiddleware handles CORS with credentials support. Echoes the request

@@ -15,7 +15,9 @@ import (
 	"github.com/funinthecloud/protosource"
 	"github.com/funinthecloud/protosource/adapters/awslambda"
 	"github.com/funinthecloud/protosource/authz"
+	"github.com/funinthecloud/protosource/authz/allowall"
 	"github.com/funinthecloud/protosource/stores/dynamodbstore"
+	"github.com/funinthecloud/protosource-auth/authz/httpauthz"
 )
 
 func main() {
@@ -29,9 +31,9 @@ func main() {
 	eventsTable := dynamodbstore.EventsTableName(envOrDefault("EVENTS_TABLE", "events"))
 	aggregatesTable := dynamodbstore.AggregatesTableName(envOrDefault("AGGREGATES_TABLE", "aggregates"))
 
-	authorizer := InitializeAuthorizer()
+	authorizer := provideAuthorizer()
 
-	router, err := InitializeRouter(client, eventsTable, aggregatesTable)
+	router, err := InitializeRouter(client, eventsTable, aggregatesTable, authorizer)
 	if err != nil {
 		panic(err)
 	}
@@ -40,6 +42,18 @@ func main() {
 
 	inner := awslambda.WrapRouter(router, extractActor)
 	lambda.Start(corsWrapper(inner))
+}
+
+// provideAuthorizer returns httpauthz when PROTOSOURCE_AUTH_URL is set,
+// otherwise falls back to allowall for local development.
+func provideAuthorizer() authz.Authorizer {
+	authURL := os.Getenv("PROTOSOURCE_AUTH_URL")
+	if authURL == "" {
+		return allowall.Authorizer{}
+	}
+	return httpauthz.New(authURL, httpauthz.WithTokenSource(
+		httpauthz.Chain(httpauthz.Cookie("shadow"), httpauthz.AuthorizationHeader()),
+	))
 }
 
 // corsWrapper adds CORS headers with credentials support to every Lambda
@@ -114,7 +128,6 @@ func whoamiHandler(authorizer authz.Authorizer) protosource.HandlerFunc {
 // for developer convenience. Returns "anonymous" when no identity can be
 // determined so the generated handler's CMD_NO_ACTOR check still passes.
 func extractActor(req events.APIGatewayProxyRequest) string {
-	// API Gateway lowercases headers; check both cookie header forms.
 	for _, key := range []string{"cookie", "Cookie"} {
 		if cookieHeader := req.Headers[key]; cookieHeader != "" {
 			if v := parseCookieValue(cookieHeader, "shadow"); v != "" {

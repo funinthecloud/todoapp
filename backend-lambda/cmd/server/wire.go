@@ -8,7 +8,6 @@ import (
 
 	"github.com/funinthecloud/protosource"
 	"github.com/funinthecloud/protosource/authz"
-	"github.com/funinthecloud/protosource/authz/allowall"
 	"github.com/funinthecloud/protosource/aws/dynamoclient"
 	"github.com/funinthecloud/protosource/opaquedata"
 	opaquedynamo "github.com/funinthecloud/protosource/opaquedata/dynamo"
@@ -28,11 +27,11 @@ func InitializeRouter(
 	client *dynamodb.Client,
 	eventsTable dynamodbstore.EventsTableName,
 	aggregatesTable dynamodbstore.AggregatesTableName,
+	authorizer authz.Authorizer,
 ) (*protosource.Router, error) {
 	wire.Build(
 		wire.Bind(new(dynamoclient.Client), new(*dynamodb.Client)),
 		wire.Bind(new(opaquedata.OpaqueStore), new(*opaquedynamo.Store)),
-		allowall.ProviderSet,
 		dynamodbstore.ProviderSet,
 		protobinaryserializer.ProviderSet,
 		todolistv1.ProviderSet,
@@ -41,9 +40,4 @@ func InitializeRouter(
 		provideRouter,
 	)
 	return nil, nil
-}
-
-func InitializeAuthorizer() authz.Authorizer {
-	wire.Build(allowall.ProviderSet)
-	return nil
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/funinthecloud/protosource"
 	"github.com/funinthecloud/protosource/authz"
-	"github.com/funinthecloud/protosource/authz/allowall"
 	"github.com/funinthecloud/protosource/serializers/protobinaryserializer"
 	"github.com/funinthecloud/protosource/stores/dynamodbstore"
 	"github.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1"
@@ -19,7 +18,7 @@ import (
 // Injectors from wire.go:
 
 // InitializeRouter wires all dependencies and returns a configured router.
-func InitializeRouter(client *dynamodb.Client, eventsTable dynamodbstore.EventsTableName, aggregatesTable dynamodbstore.AggregatesTableName) (*protosource.Router, error) {
+func InitializeRouter(client *dynamodb.Client, eventsTable dynamodbstore.EventsTableName, aggregatesTable dynamodbstore.AggregatesTableName, authorizer authz.Authorizer) (*protosource.Router, error) {
 	store := dynamodbstore.ProvideOpaqueStore(client, aggregatesTable)
 	dynamoDBStore, err := dynamodbstore.ProvideStore(client, store, eventsTable)
 	if err != nil {
@@ -28,15 +27,9 @@ func InitializeRouter(client *dynamodb.Client, eventsTable dynamodbstore.EventsT
 	serializer := protobinaryserializer.NewSerializer()
 	repository := todolistv1.ProvideRepository(dynamoDBStore, serializer)
 	todoListClient := todolistv1.NewTodoListClient(store)
-	authorizer := allowall.Provide()
 	handler := todolistv1.NewHandler(repository, todoListClient, authorizer)
 	router := provideRouter(handler)
 	return router, nil
-}
-
-func InitializeAuthorizer() authz.Authorizer {
-	authorizer := allowall.Provide()
-	return authorizer
 }
 
 // wire.go:
