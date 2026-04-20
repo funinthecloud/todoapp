@@ -4,11 +4,6 @@ import "./index.css";
 import App from "./App.tsx";
 import { createClient, AuthError } from "./api.ts";
 
-function getShadowCookie(): string | undefined {
-  const match = document.cookie.match(/(?:^|;\s*)shadow=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : undefined;
-}
-
 function getAuthUrl(): string {
   if (import.meta.env.VITE_AUTH_URL) {
     return import.meta.env.VITE_AUTH_URL;
@@ -23,24 +18,19 @@ function getAuthUrl(): string {
   return `https://auth.${baseDomain}`;
 }
 
-const shadowToken = getShadowCookie();
-if (!shadowToken) {
-  window.location.replace(getAuthUrl());
-} else {
-  createClient(shadowToken)
-    .then(({ client, actor }) => {
-      createRoot(document.getElementById("root")!).render(
-        <StrictMode>
-          <App client={client} actor={actor} />
-        </StrictMode>,
-      );
-    })
-    .catch((err) => {
-      if (err instanceof AuthError) {
-        window.location.replace(getAuthUrl());
-      } else {
-        document.getElementById("root")!.textContent =
-          "Failed to connect to the server. Please try again later.";
-      }
-    });
-}
+createClient()
+  .then(({ client, actor }) => {
+    createRoot(document.getElementById("root")!).render(
+      <StrictMode>
+        <App client={client} actor={actor} />
+      </StrictMode>,
+    );
+  })
+  .catch((err) => {
+    if (err instanceof AuthError) {
+      window.location.replace(getAuthUrl());
+    } else {
+      document.getElementById("root")!.textContent =
+        "Failed to connect to the server. Please try again later.";
+    }
+  });

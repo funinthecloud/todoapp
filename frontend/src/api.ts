@@ -1,4 +1,4 @@
-import { ProtosourceClient, BearerTokenAuth } from "@protosource/client";
+import { ProtosourceClient, NoAuth } from "@protosource/client";
 import { TodoListHTTPClient } from "./gen/showcase/app/todolist/v1/todolist_v1.protosource.client.js";
 
 const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8080";
@@ -10,10 +10,15 @@ export class AuthError extends Error {
   }
 }
 
-export async function createClient(shadowToken: string) {
-  const resp = await fetch(`${baseURL}/whoami`, {
-    headers: { Authorization: `Bearer ${shadowToken}` },
-  });
+function fetchWithCredentials(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  return fetch(input, { ...init, credentials: "include" });
+}
+
+export async function createClient() {
+  const resp = await fetchWithCredentials(`${baseURL}/whoami`);
   if (resp.status === 401 || resp.status === 403) {
     throw new AuthError(resp.status);
   }
@@ -22,10 +27,9 @@ export async function createClient(shadowToken: string) {
   }
   const { actor } = await resp.json();
 
-  const client = new ProtosourceClient(
-    baseURL,
-    new BearerTokenAuth(shadowToken, actor),
-    { useJSON: true },
-  );
+  const client = new ProtosourceClient(baseURL, new NoAuth(actor), {
+    useJSON: true,
+    fetch: fetchWithCredentials,
+  });
   return { client: new TodoListHTTPClient(client), actor };
 }

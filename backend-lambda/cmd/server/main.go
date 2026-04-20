@@ -38,14 +38,43 @@ func main() {
 
 	router.Handle("GET", "whoami", whoamiHandler(authorizer))
 
-	router.SetCORS(protosource.CORSConfig{
-		AllowOrigin:  "*",
-		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
-		AllowHeaders: "Content-Type,X-Actor,Authorization",
-	})
+	inner := awslambda.WrapRouter(router, extractActor)
+	lambda.Start(corsWrapper(inner))
+}
 
-	handler := awslambda.WrapRouter(router, extractActor)
-	lambda.Start(handler)
+// corsWrapper adds CORS headers with credentials support to every Lambda
+// response. Echoes the request Origin header and handles OPTIONS preflight.
+func corsWrapper(
+	next func(context.Context, events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error),
+) func(context.Context, events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	return func(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+		origin := req.Headers["origin"]
+		if origin == "" {
+			origin = req.Headers["Origin"]
+		}
+
+		if req.HTTPMethod == http.MethodOptions && origin != "" {
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusNoContent,
+				Headers: map[string]string{
+					"Access-Control-Allow-Origin":      origin,
+					"Access-Control-Allow-Credentials": "true",
+					"Access-Control-Allow-Methods":     "GET,POST,PUT,DELETE,OPTIONS",
+					"Access-Control-Allow-Headers":     "Content-Type,X-Actor,Authorization",
+				},
+			}, nil
+		}
+
+		resp, err := next(ctx, req)
+		if origin != "" {
+			if resp.Headers == nil {
+				resp.Headers = make(map[string]string)
+			}
+			resp.Headers["Access-Control-Allow-Origin"] = origin
+			resp.Headers["Access-Control-Allow-Credentials"] = "true"
+		}
+		return resp, err
+	}
 }
 
 func whoamiHandler(authorizer authz.Authorizer) protosource.HandlerFunc {
@@ -80,12 +109,19 @@ func whoamiHandler(authorizer authz.Authorizer) protosource.HandlerFunc {
 	}
 }
 
-// extractActor prefers an Authorization: Bearer <shadow-token> header
-// (dereferenced by the httpauthz Authorizer wired in wire.go) and
-// falls back to X-Actor for allowall/developer mode. Returns
-// "anonymous" when neither header is present so the generated
-// handler's CMD_NO_ACTOR check still passes.
+// extractActor prefers a "shadow" cookie (HttpOnly, set by the auth
+// service), then falls back to Authorization: Bearer <token> and X-Actor
+// for developer convenience. Returns "anonymous" when no identity can be
+// determined so the generated handler's CMD_NO_ACTOR check still passes.
 func extractActor(req events.APIGatewayProxyRequest) string {
+	// API Gateway lowercases headers; check both cookie header forms.
+	for _, key := range []string{"cookie", "Cookie"} {
+		if cookieHeader := req.Headers[key]; cookieHeader != "" {
+			if v := parseCookieValue(cookieHeader, "shadow"); v != "" {
+				return v
+			}
+		}
+	}
 	for _, key := range []string{"Authorization", "authorization"} {
 		if auth := req.Headers[key]; strings.HasPrefix(auth, "Bearer ") {
 			return strings.TrimPrefix(auth, "Bearer ")
@@ -98,6 +134,19 @@ func extractActor(req events.APIGatewayProxyRequest) string {
 		return actor
 	}
 	return "anonymous"
+}
+
+// parseCookieValue extracts a named cookie value from a raw Cookie header.
+func parseCookieValue(header, name string) string {
+	for _, part := range strings.Split(header, ";") {
+		part = strings.TrimSpace(part)
+		if eqIdx := strings.IndexByte(part, '='); eqIdx > 0 {
+			if part[:eqIdx] == name {
+				return part[eqIdx+1:]
+			}
+		}
+	}
+	return ""
 }
 
 func envOrDefault(key, fallback string) string {

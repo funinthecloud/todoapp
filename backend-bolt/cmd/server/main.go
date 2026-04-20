@@ -27,27 +27,30 @@ func main() {
 
 	router.Handle("GET", "whoami", whoamiHandler(authorizer))
 
-	router.SetCORS(protosource.CORSConfig{
-		AllowOrigin:  "*",
-		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
-		AllowHeaders: "Content-Type,X-Actor,Authorization",
-	})
-
 	addr := ":8080"
 	fmt.Printf("Showcase server listening on %s\n", addr)
-	log.Fatal(http.ListenAndServe(addr, httpstandard.WrapRouter(router, actorExtractor)))
+	log.Fatal(http.ListenAndServe(addr, corsMiddleware(httpstandard.WrapRouter(router, actorExtractor))))
 }
 
-// actorExtractor prefers an Authorization: Bearer <token> header (shadow
-// tokens issued by protosource-auth) and falls back to X-Actor for
-// developer convenience when running against allowall.Authorizer.
-//
-// When PROTOSOURCE_AUTH_URL is set in wire.go's provideAuthorizer, the
-// Authorizer dereferences the bearer token against the auth service
-// and enriches the context with the real user id. The Actor field
-// carries the raw token in that mode — a future protosource template
-// update will read the authenticated user id from context instead,
-// making the command's actor the human-readable user id.
+// corsMiddleware handles CORS with credentials support. Echoes the request
+// Origin header to allow cross-origin requests with cookies.
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type,X-Actor,Authorization")
+		}
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func whoamiHandler(authorizer authz.Authorizer) protosource.HandlerFunc {
 	return func(ctx context.Context, req protosource.Request) protosource.Response {
 		enrichedCtx, err := authorizer.Authorize(ctx, req, "showcase.app.todolist.v1.WhoAmI")
@@ -80,7 +83,13 @@ func whoamiHandler(authorizer authz.Authorizer) protosource.HandlerFunc {
 	}
 }
 
+// actorExtractor prefers a "shadow" cookie (HttpOnly, set by the auth
+// service), then falls back to Authorization: Bearer <token> and X-Actor
+// for developer convenience.
 func actorExtractor(r *http.Request) string {
+	if c, err := r.Cookie("shadow"); err == nil && c.Value != "" {
+		return c.Value
+	}
 	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 		return strings.TrimPrefix(auth, "Bearer ")
 	}
