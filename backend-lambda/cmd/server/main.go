@@ -63,6 +63,14 @@ func whoamiHandler(authorizer authz.Authorizer) protosource.HandlerFunc {
 		if actor == "" {
 			actor = req.Actor
 		}
+		if actor == "" || actor == "anonymous" {
+			body, _ := json.Marshal(map[string]string{"error": "unauthorized"})
+			return protosource.Response{
+				StatusCode: http.StatusUnauthorized,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       string(body),
+			}
+		}
 		body, _ := json.Marshal(map[string]string{"actor": actor})
 		return protosource.Response{
 			StatusCode: http.StatusOK,

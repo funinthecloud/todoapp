@@ -55,7 +55,7 @@ export default function App({ client: todoListClient, actor }: AppProps) {
         setError(`Failed to load lists: ${e instanceof Error ? e.message : e}`);
       }
     }
-  }, [showArchived]);
+  }, [showArchived, todoListClient, actor]);
 
   useEffect(() => {
     loadMyLists();
@@ -72,7 +72,7 @@ export default function App({ client: todoListClient, actor }: AppProps) {
     } catch (e: unknown) {
       setError(`Failed to load list: ${e instanceof Error ? e.message : e}`);
     }
-  }, []);
+  }, [todoListClient]);
 
   const loadHistory = useCallback(async (id: string) => {
     try {
@@ -81,7 +81,7 @@ export default function App({ client: todoListClient, actor }: AppProps) {
     } catch (e: unknown) {
       setError(`Failed to load history: ${e instanceof Error ? e.message : e}`);
     }
-  }, []);
+  }, [todoListClient]);
 
   useEffect(() => {
     if (selectedId) {

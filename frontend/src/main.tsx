@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
-import { createClient } from "./api.ts";
+import { createClient, AuthError } from "./api.ts";
 
 function getShadowCookie(): string | undefined {
   const match = document.cookie.match(/(?:^|;\s*)shadow=([^;]*)/);
@@ -35,7 +35,12 @@ if (!shadowToken) {
         </StrictMode>,
       );
     })
-    .catch(() => {
-      window.location.replace(getAuthUrl());
+    .catch((err) => {
+      if (err instanceof AuthError) {
+        window.location.replace(getAuthUrl());
+      } else {
+        document.getElementById("root")!.textContent =
+          "Failed to connect to the server. Please try again later.";
+      }
     });
 }
