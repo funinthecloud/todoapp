@@ -9,7 +9,6 @@ package main
 import (
 	"github.com/funinthecloud/protosource"
 	"github.com/funinthecloud/protosource/authz"
-	"github.com/funinthecloud/protosource/authz/allowall"
 	"github.com/funinthecloud/protosource/serializers/protobinaryserializer"
 	"github.com/funinthecloud/protosource/stores/boltdbstore"
 	"github.com/funinthecloud/todoapp/backend-bolt/gen/showcase/app/todolist/v1"
@@ -27,8 +26,7 @@ func InitializeRepository() (*protosource.Repository, error) {
 	return repository, nil
 }
 
-func InitializeHandler(repo *protosource.Repository) *todolistv1.Handler {
-	authorizer := allowall.Provide()
+func InitializeHandler(repo *protosource.Repository, authorizer authz.Authorizer) *todolistv1.Handler {
 	handler := provideHandler(repo, authorizer)
 	return handler
 }

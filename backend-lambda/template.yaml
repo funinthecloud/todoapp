@@ -6,11 +6,6 @@ Globals:
   Function:
     Timeout: 10
     MemorySize: 128
-  Api:
-    Cors:
-      AllowOrigin: "'*'"
-      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-      AllowHeaders: "'Content-Type,X-Actor'"
 
 Parameters:
   EventsTableName:

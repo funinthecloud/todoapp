@@ -9,7 +9,16 @@ package main
 import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/funinthecloud/protosource"
-	"github.com/funinthecloud/protosource/authz/allowall"
+	"github.com/funinthecloud/protosource-auth/authz/directauthz"
+	"github.com/funinthecloud/protosource-auth/authz/httpauthz"
+	"github.com/funinthecloud/protosource-auth/gen/auth/role/v1"
+	"github.com/funinthecloud/protosource-auth/gen/auth/role/v1/rolev1dynamodb"
+	"github.com/funinthecloud/protosource-auth/gen/auth/token/v1"
+	"github.com/funinthecloud/protosource-auth/gen/auth/token/v1/tokenv1dynamodb"
+	"github.com/funinthecloud/protosource-auth/gen/auth/user/v1"
+	"github.com/funinthecloud/protosource-auth/gen/auth/user/v1/userv1dynamodb"
+	"github.com/funinthecloud/protosource-auth/service"
+	"github.com/funinthecloud/protosource/authz"
 	"github.com/funinthecloud/protosource/serializers/protobinaryserializer"
 	"github.com/funinthecloud/protosource/stores/dynamodbstore"
 	"github.com/funinthecloud/todoapp/backend-lambda/gen/showcase/app/todolist/v1"
@@ -27,10 +36,30 @@ func InitializeRouter(client *dynamodb.Client, eventsTable dynamodbstore.EventsT
 	serializer := protobinaryserializer.NewSerializer()
 	repository := todolistv1.ProvideRepository(dynamoDBStore, serializer)
 	todoListClient := todolistv1.NewTodoListClient(store)
-	authorizer := allowall.Provide()
+	tokenv1dynamodbRepository := tokenv1dynamodb.ProvideRepository(dynamoDBStore, serializer)
+	userv1dynamodbRepository := userv1dynamodb.ProvideRepository(dynamoDBStore, serializer)
+	rolev1dynamodbRepository := rolev1dynamodb.ProvideRepository(dynamoDBStore, serializer)
+	checker := provideChecker(tokenv1dynamodbRepository, userv1dynamodbRepository, rolev1dynamodbRepository)
+	authorizer := provideAuthorizer(checker)
 	handler := todolistv1.NewHandler(repository, todoListClient, authorizer)
 	router := provideRouter(handler)
 	return router, nil
+}
+
+// InitializeAuthorizer wires the directauthz authorizer for use in /whoami.
+func InitializeAuthorizer(client *dynamodb.Client, eventsTable dynamodbstore.EventsTableName, aggregatesTable dynamodbstore.AggregatesTableName) (authz.Authorizer, error) {
+	store := dynamodbstore.ProvideOpaqueStore(client, aggregatesTable)
+	dynamoDBStore, err := dynamodbstore.ProvideStore(client, store, eventsTable)
+	if err != nil {
+		return nil, err
+	}
+	serializer := protobinaryserializer.NewSerializer()
+	repository := tokenv1dynamodb.ProvideRepository(dynamoDBStore, serializer)
+	userv1dynamodbRepository := userv1dynamodb.ProvideRepository(dynamoDBStore, serializer)
+	rolev1dynamodbRepository := rolev1dynamodb.ProvideRepository(dynamoDBStore, serializer)
+	checker := provideChecker(repository, userv1dynamodbRepository, rolev1dynamodbRepository)
+	authorizer := provideAuthorizer(checker)
+	return authorizer, nil
 }
 
 // wire.go:
@@ -39,4 +68,16 @@ func provideRouter(
 	todolistHandler *todolistv1.Handler,
 ) *protosource.Router {
 	return protosource.NewRouter(todolistHandler)
+}
+
+func provideChecker(
+	tokenRepo tokenv1.Repo,
+	userRepo userv1.Repo,
+	roleRepo rolev1.Repo,
+) *service.Checker {
+	return service.NewChecker(tokenRepo, userRepo, roleRepo)
+}
+
+func provideAuthorizer(checker *service.Checker) authz.Authorizer {
+	return directauthz.New(checker, directauthz.WithTokenSource(httpauthz.Chain(httpauthz.Cookie("shadow"), httpauthz.AuthorizationHeader())))
 }
