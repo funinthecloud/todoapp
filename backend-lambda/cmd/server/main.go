@@ -15,9 +15,7 @@ import (
 	"github.com/funinthecloud/protosource"
 	"github.com/funinthecloud/protosource/adapters/awslambda"
 	"github.com/funinthecloud/protosource/authz"
-	"github.com/funinthecloud/protosource/authz/allowall"
 	"github.com/funinthecloud/protosource/stores/dynamodbstore"
-	"github.com/funinthecloud/protosource-auth/authz/httpauthz"
 )
 
 func main() {
@@ -31,9 +29,12 @@ func main() {
 	eventsTable := dynamodbstore.EventsTableName(envOrDefault("EVENTS_TABLE", "events"))
 	aggregatesTable := dynamodbstore.AggregatesTableName(envOrDefault("AGGREGATES_TABLE", "aggregates"))
 
-	authorizer := provideAuthorizer()
+	authorizer, err := InitializeAuthorizer(client, eventsTable, aggregatesTable)
+	if err != nil {
+		panic(err)
+	}
 
-	router, err := InitializeRouter(client, eventsTable, aggregatesTable, authorizer)
+	router, err := InitializeRouter(client, eventsTable, aggregatesTable)
 	if err != nil {
 		panic(err)
 	}
@@ -42,18 +43,6 @@ func main() {
 
 	inner := awslambda.WrapRouter(router, extractActor)
 	lambda.Start(corsWrapper(inner))
-}
-
-// provideAuthorizer returns httpauthz when PROTOSOURCE_AUTH_URL is set,
-// otherwise falls back to allowall for local development.
-func provideAuthorizer() authz.Authorizer {
-	authURL := os.Getenv("PROTOSOURCE_AUTH_URL")
-	if authURL == "" {
-		return allowall.Authorizer{}
-	}
-	return httpauthz.New(authURL, httpauthz.WithTokenSource(
-		httpauthz.Chain(httpauthz.Cookie("shadow"), httpauthz.AuthorizationHeader()),
-	))
 }
 
 // corsWrapper adds CORS headers with credentials support to every Lambda
