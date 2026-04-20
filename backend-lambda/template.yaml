@@ -8,9 +8,10 @@ Globals:
     MemorySize: 128
   Api:
     Cors:
-      AllowOrigin: "'*'"
+      AllowOrigin: "'https://todoapp.drhayt.com'"
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-      AllowHeaders: "'Content-Type,X-Actor'"
+      AllowHeaders: "'Content-Type,X-Actor,Authorization'"
+      AllowCredentials: true
 
 Parameters:
   EventsTableName:
