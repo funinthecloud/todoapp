@@ -73,22 +73,3 @@ func InitializeRouter(
 	return nil, nil
 }
 
-// InitializeAuthorizer wires the directauthz authorizer for use in /whoami.
-func InitializeAuthorizer(
-	client *dynamodb.Client,
-	eventsTable dynamodbstore.EventsTableName,
-	aggregatesTable dynamodbstore.AggregatesTableName,
-) (authz.Authorizer, error) {
-	wire.Build(
-		wire.Bind(new(dynamoclient.Client), new(*dynamodb.Client)),
-		dynamodbstore.ProviderSet,
-		protobinaryserializer.ProviderSet,
-
-		tokenv1dynamodb.ProviderSet,
-		userv1dynamodb.ProviderSet,
-		rolev1dynamodb.ProviderSet,
-		provideChecker,
-		provideAuthorizer,
-	)
-	return nil, nil
-}
