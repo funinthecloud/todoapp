@@ -46,22 +46,6 @@ func InitializeRouter(client *dynamodb.Client, eventsTable dynamodbstore.EventsT
 	return router, nil
 }
 
-// InitializeAuthorizer wires the directauthz authorizer for use in /whoami.
-func InitializeAuthorizer(client *dynamodb.Client, eventsTable dynamodbstore.EventsTableName, aggregatesTable dynamodbstore.AggregatesTableName) (authz.Authorizer, error) {
-	store := dynamodbstore.ProvideOpaqueStore(client, aggregatesTable)
-	dynamoDBStore, err := dynamodbstore.ProvideStore(client, store, eventsTable)
-	if err != nil {
-		return nil, err
-	}
-	serializer := protobinaryserializer.NewSerializer()
-	repository := tokenv1dynamodb.ProvideRepository(dynamoDBStore, serializer)
-	userv1dynamodbRepository := userv1dynamodb.ProvideRepository(dynamoDBStore, serializer)
-	rolev1dynamodbRepository := rolev1dynamodb.ProvideRepository(dynamoDBStore, serializer)
-	checker := provideChecker(repository, userv1dynamodbRepository, rolev1dynamodbRepository)
-	authorizer := provideAuthorizer(checker)
-	return authorizer, nil
-}
-
 // wire.go:
 
 func provideRouter(

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,11 +26,16 @@ func main() {
 	handler := InitializeHandler(repo, authorizer)
 	handler.RegisterRoutes(router)
 
-	router.Handle("GET", "whoami", whoamiHandler(authorizer))
+	router.SetCORS(protosource.CORSConfig{
+		AllowOrigins:     buildAllowedOrigins(),
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:     "Content-Type,X-Actor,Authorization",
+		AllowCredentials: true,
+	})
 
 	addr := ":8080"
 	fmt.Printf("Showcase server listening on %s\n", addr)
-	log.Fatal(http.ListenAndServe(addr, corsMiddleware(httpstandard.WrapRouter(router, actorExtractor))))
+	log.Fatal(http.ListenAndServe(addr, httpstandard.WrapRouter(router, actorExtractor)))
 }
 
 // provideAuthorizer returns httpauthz when PROTOSOURCE_AUTH_URL is set,
@@ -47,72 +50,18 @@ func provideAuthorizer() authz.Authorizer {
 	))
 }
 
-// corsMiddleware handles CORS with credentials support. Validates the
-// request Origin against CORS_ALLOWED_ORIGINS (comma-separated) or
-// defaults to http://localhost:5173 for local dev.
-func corsMiddleware(next http.Handler) http.Handler {
-	allowed := buildAllowedOrigins()
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if origin != "" && allowed[origin] {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type,X-Actor,Authorization")
-			w.Header().Set("Vary", "Origin")
-		}
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func buildAllowedOrigins() map[string]bool {
+func buildAllowedOrigins() []string {
 	raw := os.Getenv("CORS_ALLOWED_ORIGINS")
 	if raw == "" {
 		raw = "http://localhost:5173"
 	}
-	m := make(map[string]bool)
+	var origins []string
 	for _, o := range strings.Split(raw, ",") {
 		if o = strings.TrimSpace(o); o != "" {
-			m[o] = true
+			origins = append(origins, o)
 		}
 	}
-	return m
-}
-
-func whoamiHandler(authorizer authz.Authorizer) protosource.HandlerFunc {
-	return func(ctx context.Context, req protosource.Request) protosource.Response {
-		enrichedCtx, err := authorizer.Authorize(ctx, req, "showcase.app.todolist.v1.WhoAmI")
-		if err != nil {
-			body, _ := json.Marshal(map[string]string{"error": "unauthorized"})
-			return protosource.Response{
-				StatusCode: http.StatusUnauthorized,
-				Headers:    map[string]string{"Content-Type": "application/json"},
-				Body:       string(body),
-			}
-		}
-		actor := authz.UserIDFromContext(enrichedCtx)
-		if actor == "" {
-			actor = req.Actor
-		}
-		if actor == "" {
-			body, _ := json.Marshal(map[string]string{"error": "unauthorized"})
-			return protosource.Response{
-				StatusCode: http.StatusUnauthorized,
-				Headers:    map[string]string{"Content-Type": "application/json"},
-				Body:       string(body),
-			}
-		}
-		body, _ := json.Marshal(map[string]string{"actor": actor})
-		return protosource.Response{
-			StatusCode: http.StatusOK,
-			Headers:    map[string]string{"Content-Type": "application/json"},
-			Body:       string(body),
-		}
-	}
+	return origins
 }
 
 // actorExtractor prefers a "shadow" cookie (HttpOnly, set by the auth
