@@ -26,7 +26,7 @@ export async function createClient() {
   if (!resp.ok) {
     throw new Error(`/whoami failed: ${resp.status}`);
   }
-  const { actor } = await resp.json();
+  const { user_id: actor } = await resp.json();
 
   const client = new ProtosourceClient(baseURL, new NoAuth(actor), {
     useJSON: true,
