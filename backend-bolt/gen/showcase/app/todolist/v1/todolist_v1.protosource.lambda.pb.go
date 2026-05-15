@@ -34,10 +34,18 @@ type Handler struct {
 }
 
 // NewHandler creates a new Handler instance with the given repository, client,
-// and authorizer. Every generated command handler calls authorizer.Authorize
-// with the canonical function name "showcase.app.todolist.v1.{CommandMessageName}"
-// before running the command pipeline. Applications that do not enforce
-// authorization at this layer should wire in allowall.Authorizer.
+// and authorizer. Every generated handler — commands AND reads (Get, Load,
+// History, QueryBy…) — calls authorizer.Authorize with a canonical function
+// name before running. The names follow the pattern
+// "showcase.app.todolist.v1.{Operation}" where {Operation} is:
+//   - {CommandMessageName}              for commands
+//   - Get{AggregateName}                for materialized read       (GET /...prefix.../{id})
+//   - Load{AggregateName}               for event-replay read       (GET /...prefix.../load/{id})
+//   - History{AggregateName}            for event-history read      (GET /...prefix.../{id}/history)
+//   - QueryBy{Fields}[With{SKFields}]   for GSI queries             (GET /...prefix.../query/...)
+//
+// Applications that do not enforce authorization at this layer should wire in
+// allowall.Authorizer.
 //
 // authorizer is required; passing nil panics immediately with a descriptive
 // message rather than deferring to an opaque nil-pointer dereference on the
@@ -66,7 +74,7 @@ func (h *Handler) RegisterRoutes(router *protosource.Router) {
 
 	router.Handle("POST", "showcase/app/todolist/v1/removeitem", h.HandleRemoveItem)
 
-	router.Handle("GET", "showcase/app/todolist/v1/get/{id}", h.HandleGetMaterialized)
+	router.Handle("GET", "showcase/app/todolist/v1/load/{id}", h.HandleLoad)
 	router.Handle("GET", "showcase/app/todolist/v1/{id}", h.HandleGet)
 	router.Handle("GET", "showcase/app/todolist/v1/{id}/history", h.HandleHistory)
 
@@ -418,19 +426,60 @@ func (h *Handler) HandleRemoveItem(ctx context.Context, request protosource.Requ
 	}
 }
 
-// HandleGet retrieves the current state of a TodoList aggregate.
-func (h *Handler) HandleGet(ctx context.Context, request protosource.Request) protosource.Response {
+// HandleLoad retrieves the current state of a TodoList aggregate by
+// replaying its events through the repository. Use this for diagnostics or
+// when the materialized store is unavailable; prefer HandleGet for the common
+// case.
+func (h *Handler) HandleLoad(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.LoadTodoList")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	id := extractID(request)
 	if id == "" {
-		return errorResponse(http.StatusBadRequest, "GET_NO_ID", "missing required parameter: id", nil)
+		return errorResponse(http.StatusBadRequest, "LOAD_NO_ID", "missing required parameter: id", nil)
 	}
 
 	aggregate, err := h.repo.Load(ctx, id)
 	if err != nil {
 		if errors.Is(err, protosource.ErrAggregateNotFound) {
+			return errorResponse(http.StatusNotFound, "LOAD_NOT_FOUND", "aggregate not found", nil)
+		}
+		return errorResponse(http.StatusInternalServerError, "LOAD_FAILED", "failed to load aggregate", err)
+	}
+
+	body, contentType, err := marshalResponse(request, aggregate)
+	if err != nil {
+		return errorResponse(http.StatusInternalServerError, "LOAD_MARSHAL", "failed to serialize aggregate", err)
+	}
+
+	return protosource.Response{
+		StatusCode: http.StatusOK,
+		Body:       string(body),
+		Headers:    map[string]string{"Content-Type": contentType},
+	}
+}
+
+// HandleGet retrieves the TodoList aggregate from the materialized store.
+// This is the common read path; use HandleLoad to force an event replay.
+func (h *Handler) HandleGet(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.GetTodoList")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
+	id := extractID(request)
+	if id == "" {
+		return errorResponse(http.StatusBadRequest, "GET_NO_ID", "missing required parameter: id", nil)
+	}
+
+	aggregate, err := h.client.GetTodoList(ctx, id)
+	if err != nil {
+		if errors.Is(err, opaquedata.ErrNotFound) {
 			return errorResponse(http.StatusNotFound, "GET_NOT_FOUND", "aggregate not found", nil)
 		}
-		return errorResponse(http.StatusInternalServerError, "GET_LOAD", "failed to load aggregate", err)
+		return errorResponse(http.StatusInternalServerError, "GET_FAILED", "failed to load aggregate", err)
 	}
 
 	body, contentType, err := marshalResponse(request, aggregate)
@@ -445,35 +494,13 @@ func (h *Handler) HandleGet(ctx context.Context, request protosource.Request) pr
 	}
 }
 
-// HandleGetMaterialized retrieves the TodoList aggregate from the materialized store.
-func (h *Handler) HandleGetMaterialized(ctx context.Context, request protosource.Request) protosource.Response {
-	id := extractID(request)
-	if id == "" {
-		return errorResponse(http.StatusBadRequest, "GET_MAT_NO_ID", "missing required parameter: id", nil)
-	}
-
-	aggregate, err := h.client.GetTodoList(ctx, id)
-	if err != nil {
-		if errors.Is(err, opaquedata.ErrNotFound) {
-			return errorResponse(http.StatusNotFound, "GET_MAT_NOT_FOUND", "aggregate not found", nil)
-		}
-		return errorResponse(http.StatusInternalServerError, "GET_MAT_LOAD", "failed to load aggregate", err)
-	}
-
-	body, contentType, err := marshalResponse(request, aggregate)
-	if err != nil {
-		return errorResponse(http.StatusInternalServerError, "GET_MAT_MARSHAL", "failed to serialize aggregate", err)
-	}
-
-	return protosource.Response{
-		StatusCode: http.StatusOK,
-		Body:       string(body),
-		Headers:    map[string]string{"Content-Type": contentType},
-	}
-}
-
 // HandleHistory retrieves the full event history for a TodoList aggregate.
 func (h *Handler) HandleHistory(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.HistoryTodoList")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	id := extractID(request)
 	if id == "" {
 		return errorResponse(http.StatusBadRequest, "HIST_NO_ID", "missing required parameter: id", nil)
@@ -501,6 +528,11 @@ func (h *Handler) HandleHistory(ctx context.Context, request protosource.Request
 
 // HandleQueryByCreateBy queries GSI1 by partition key with optional sort key condition.
 func (h *Handler) HandleQueryByCreateBy(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.QueryByCreateBy")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	create_byRaw := request.QueryParameters["create_by"]
 	if create_byRaw == "" {
 		return errorResponse(http.StatusBadRequest, "QUERY_MISSING_PK", "missing required parameter: create_by", nil)
@@ -567,6 +599,11 @@ func (h *Handler) HandleQueryByCreateBy(ctx context.Context, request protosource
 
 // HandleQueryByCreateByWithState queries GSI2 by partition key with optional sort key condition.
 func (h *Handler) HandleQueryByCreateByWithState(ctx context.Context, request protosource.Request) protosource.Response {
+	ctx, err := h.authorizer.Authorize(ctx, request, "showcase.app.todolist.v1.QueryByCreateByWithState")
+	if err != nil {
+		return authzErrorResponse(err)
+	}
+
 	create_byRaw := request.QueryParameters["create_by"]
 	if create_byRaw == "" {
 		return errorResponse(http.StatusBadRequest, "QUERY_MISSING_PK", "missing required parameter: create_by", nil)
